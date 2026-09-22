@@ -1,0 +1,37 @@
+{
+	# Ajuste a CA/certificado em docs/rede-e-tls.md quando houver certificado corporativo.
+	admin off
+}
+
+{$SITE_ADDRESS:localhost} {
+	# CA interna do Caddy. Substituir por "tls /caminho/cert.pem /caminho/key.pem" se houver certificado corporativo.
+	tls internal
+
+	request_body {
+		max_size 5MB
+	}
+
+	# Rotas públicas da API (compatível com OpenAI).
+	@api path /v1/chat/completions /v1/completions /v1/embeddings /v1/models /v1/models/*
+	handle @api {
+		reverse_proxy litellm:4000 {
+			# Streaming SSE sem buffer.
+			flush_interval -1
+		}
+	}
+
+	@health path /health/liveliness /health/readiness
+	handle @health {
+		reverse_proxy litellm:4000
+	}
+
+	# Tudo o mais (admin, UI, /key/*, /model/*, /metrics...) não é exposto na borda.
+	handle {
+		respond "Not found" 404
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
