@@ -16,6 +16,7 @@ Emergência (no host)        ──túnel SSH────► 127.0.0.1:8080     
 | Lista e detalhe de chaves (limites, expiração, último uso) | ✅ | ✅ |
 | Logs sem texto (filtros, CSV de metadados) | ✅ | ✅ |
 | Modelos: instalados, publicados, memória, uso e chaves que os liberam | ✅ | ✅ |
+| Chat: conversar com um modelo publicado (via master key, fora dos limites de uma chave) | ✅ | ✅ |
 | Baixar, publicar, retirar, remover, carregar e descarregar modelos | ❌ | ✅ |
 | Texto de prompts e respostas (por requisição ou exportação com justificativa) | ❌ | ✅ auditado |
 | Criar, alterar, bloquear, rotacionar e revogar chaves | ❌ | ✅ |
@@ -114,6 +115,17 @@ Proteções:
 - não há modelos fixos: o `config/litellm.yaml` não declara nenhum, e uma instalação nova começa sem modelos publicados. Enquanto nada for publicado, não é possível criar chaves.
 
 Antes de publicar um modelo grande, meça memória e tokens/s e ajuste `OLLAMA_NUM_PARALLEL`, `OLLAMA_MAX_LOADED_MODELS` e `global_max_parallel_requests` ([operacao.md](operacao.md#gerenciar-modelos)).
+
+## Chat
+
+A tela **Chat** deixa conversar com qualquer modelo de chat publicado, direto do navegador. Serve para
+testar respostas e desempenho sem precisar de uma chave `sk-...`.
+
+- A requisição sai com a **master key**, então não passa pelo RPM, paralelismo nem allowlist de nenhuma
+  chave — vale para admin e leitor.
+- A conversa não é guardada pelo painel: some ao recarregar a página ou trocar de tela.
+- Cada mensagem, no entanto, é uma chamada real ao gateway: aparece no consumo do modelo e, para admins,
+  no texto dos logs, como qualquer outra requisição.
 
 ## Logs, consumo e retenção
 

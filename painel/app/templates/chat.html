@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titulo %}Chat{% endblock %}
+{% block conteudo %}
+<h1>Chat</h1>
+<p class="sub">Converse diretamente com um modelo publicado no gateway, para testar respostas e desempenho.
+  A conversa não fica salva: some ao recarregar a página. A requisição passa pelo gateway como qualquer
+  outra chamada (aparece no consumo e, para admins, nos logs), mas fora dos limites de uma chave sk-.</p>
+
+{% if not modelos %}
+<p class="aviso erro">Nenhum modelo de chat publicado no gateway. Publique um em <a href="/modelos">Modelos</a>.</p>
+{% else %}
+<div class="chat" data-chat>
+  <form id="chat-form" class="chat-form">
+    <input type="hidden" name="csrf" value="{{ usuario.csrf }}">
+    <div class="chat-topo">
+      <label>Modelo
+        <select name="modelo" required>
+          {% for nome in modelos %}<option value="{{ nome }}">{{ nome }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="button" class="secundario" data-limpar>Limpar conversa</button>
+    </div>
+    <div class="chat-historico" data-historico></div>
+    <div class="chat-entrada">
+      <textarea name="mensagem" placeholder="Escreva uma mensagem... (Enter envia, Shift+Enter quebra linha)" required></textarea>
+      <button type="submit">Enviar</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

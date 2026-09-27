@@ -14,6 +14,7 @@
   <nav>
     {% set atual = request.url.path %}
     <a href="/" {% if atual == '/' %}aria-current="page"{% endif %}>Visão geral</a>
+    <a href="/chat" {% if atual.startswith('/chat') %}aria-current="page"{% endif %}>Chat</a>
     <a href="/chaves" {% if atual.startswith('/chaves') %}aria-current="page"{% endif %}>Chaves</a>
     <a href="/consumo" {% if atual.startswith('/consumo') %}aria-current="page"{% endif %}>Consumo</a>
     <a href="/logs" {% if atual.startswith('/logs') %}aria-current="page"{% endif %}>Logs</a>

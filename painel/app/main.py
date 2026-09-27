@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import db, downloads, rotinas
 from .autenticacao import Proibido, Redirecionar
-from .rotas import acesso, admin, chaves, consumo, inicio, logs, modelos, usuarios
+from .rotas import acesso, admin, chat, chaves, consumo, inicio, logs, modelos, usuarios
 from .web import render
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -29,7 +29,7 @@ async def ciclo_de_vida(app: FastAPI):
 app = FastAPI(lifespan=ciclo_de_vida, docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 
-for modulo in (acesso, inicio, chaves, consumo, logs, modelos, usuarios, admin):
+for modulo in (acesso, inicio, chat, chaves, consumo, logs, modelos, usuarios, admin):
     app.include_router(modulo.router)
 
 _CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "

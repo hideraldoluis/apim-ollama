@@ -158,6 +158,24 @@ td details.acao summary { font-weight: 500; font-size: 0.9rem; }
 progress { width: 140px; vertical-align: middle; }
 .dica { color: var(--suave); font-size: 0.8rem; }
 
+/* Chat */
+.chat-form { display: flex; flex-direction: column; gap: 10px; height: calc(100vh - 260px); min-height: 420px; }
+.chat-topo { display: flex; align-items: end; gap: 12px; }
+.chat-topo label { flex: 0 0 auto; min-width: 220px; }
+.chat-topo select { width: 100%; }
+[data-limpar] { margin-left: auto; }
+.chat-historico {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px;
+}
+.bolha { max-width: 80%; padding: 8px 12px; border-radius: var(--raio); }
+.bolha .quem { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--suave); margin-bottom: 2px; }
+.bolha .texto { white-space: pre-wrap; overflow-wrap: anywhere; }
+.bolha.user { align-self: flex-end; background: var(--neutro-fundo); }
+.bolha.assistant { align-self: flex-start; background: var(--fundo); border: 1px solid var(--borda); }
+.chat-entrada { display: flex; gap: 10px; align-items: end; }
+.chat-entrada textarea { flex: 1; min-height: 54px; max-height: 200px; resize: vertical; }
+
 /* Consumo: abas de visão e agrupamento chave × modelo */
 .abas { display: inline-flex; border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; margin-right: auto; }
 .abas a { padding: 6px 14px; text-decoration: none; color: var(--suave); background: var(--superficie); }

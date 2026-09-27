@@ -13,7 +13,7 @@ Cliente interno ──HTTPS──► Caddy (:443) ──► LiteLLM (:4000) ─�
 - **LiteLLM** é o gateway: chaves virtuais, allowlist de modelos, RPM, requisições paralelas, expiração.
 - **Caddy** termina o TLS e expõe somente `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/models` e `/health/*`. Todo o resto responde `404`.
 - A administração (criar/revogar chaves) usa `127.0.0.1:4000` no próprio host, pelos scripts, ou o **painel de governança** em `https://<SITE_ADDRESS>:8443` (restrito à rede de gestão; veja [docs/painel.md](docs/painel.md)).
-- **Painel:** login local com papéis admin/leitor; gestão de chaves e de modelos (baixar, publicar no gateway, carregar), consumo por chave, logs sem texto para leitores e texto só para admin, com auditoria. Retenção dos logs: 180 dias.
+- **Painel:** login local com papéis admin/leitor; gestão de chaves e de modelos (baixar, publicar no gateway, carregar), chat de teste com os modelos publicados, consumo por chave, logs sem texto para leitores e texto só para admin, com auditoria. Retenção dos logs: 180 dias.
 - **Auditoria:** cada requisição grava no Postgres o prompt, a resposta, o hash da chave e o nome dado ao usuário/time/grupo na criação (`scripts/logs.sh`). Veja [docs/operacao.md](docs/operacao.md#registro-de-prompts-no-banco).
 
 ## Requisitos (máquina de deploy)
