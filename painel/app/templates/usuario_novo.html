@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Novo usuário{% endblock %}
+{% block conteudo %}
+<h1>Novo usuário</h1>
+<p class="sub">O sistema gera uma senha temporária, válida por 24 horas, que o usuário troca no primeiro acesso.</p>
+{{ m.erros(erros) }}
+<form class="formulario painel" method="post" action="/usuarios/novo">
+  {{ m.csrf() }}
+  <label>Login
+    <input name="login" value="{{ form.login }}" pattern="[a-z0-9._\-]{3,64}" maxlength="64" required autocomplete="off">
+    <span class="dica">3 a 64 caracteres: a-z, 0-9, ponto, hífen, sublinhado. Não pode ser reutilizado.</span>
+  </label>
+  <label>Nome completo <input name="nome" value="{{ form.nome }}" maxlength="120" required></label>
+  <label>Papel
+    <select name="papel">
+      <option value="leitor" {% if form.papel == 'leitor' %}selected{% endif %}>Leitor: chaves, consumo e logs sem texto</option>
+      <option value="admin" {% if form.papel == 'admin' %}selected{% endif %}>Admin: tudo, inclusive texto dos logs e gestão</option>
+    </select>
+  </label>
+  <div><button>Criar usuário</button> <a href="/usuarios">Cancelar</a></div>
+</form>
+{% endblock %}

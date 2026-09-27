@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}{{ alvo.login }}{% endblock %}
+{% block conteudo %}
+<h1>{{ alvo.nome }} <span class="papel">{{ alvo.papel }}</span></h1>
+<p class="sub">{{ alvo.login }} ·
+  {% if not alvo.ativo %}<span class="selo desativado">desativado</span>
+  {% elif alvo.bloqueado %}<span class="selo bloqueado">bloqueado até {{ alvo.bloqueado_ate | datahora }}</span>
+  {% else %}<span class="selo ativo">ativo</span>{% endif %}
+</p>
+
+<div class="painel">
+  <dl class="dados">
+    <dt>Criado em</dt><dd>{{ alvo.criado_em | datahora }} por {{ alvo.criado_por }}</dd>
+    <dt>Último login</dt><dd>{{ alvo.ultimo_login | datahora }}</dd>
+    <dt>Senha alterada em</dt><dd>{{ alvo.senha_alterada_em | datahora }}{% if alvo.deve_trocar_senha %} · <strong>temporária</strong>, expira {{ alvo.senha_temp_expira_em | datahora }}{% endif %}</dd>
+    {% if not alvo.ativo %}
+    <dt>Desativado em</dt><dd>{{ alvo.desativado_em | datahora }} por {{ alvo.desativado_por }}</dd>
+    <dt>Motivo</dt><dd>{{ alvo.motivo_desativacao }}</dd>
+    {% endif %}
+  </dl>
+</div>
+
+{% if alvo.id == usuario.id %}
+<p class="aviso atencao">Este é o seu usuário. Papel, senha e desativação devem ser alterados por outro administrador. Para mudar sua senha, use <a href="/trocar-senha">Trocar senha</a>.</p>
+{% else %}
+<div class="acoes">
+  {% if alvo.ativo %}
+  <form class="painel" method="post" action="/usuarios/{{ alvo.id }}/papel">
+    {{ m.csrf() }}
+    <h2>Papel</h2>
+    <select name="papel">
+      <option value="leitor" {% if alvo.papel == 'leitor' %}selected{% endif %}>Leitor</option>
+      <option value="admin" {% if alvo.papel == 'admin' %}selected{% endif %}>Admin</option>
+    </select>
+    <p><button>Alterar papel</button></p>
+  </form>
+
+  <form class="painel" method="post" action="/usuarios/{{ alvo.id }}/redefinir-senha"
+        data-confirmar="Gerar nova senha temporária para {{ alvo.login }}? As sessões dele serão encerradas.">
+    {{ m.csrf() }}
+    <h2>Senha</h2>
+    <p class="dica">Gera nova senha temporária, desbloqueia e encerra as sessões.</p>
+    <button>Redefinir senha</button>
+  </form>
+
+  {% if alvo.bloqueado %}
+  <form class="painel" method="post" action="/usuarios/{{ alvo.id }}/desbloquear">
+    {{ m.csrf() }}
+    <h2>Bloqueio</h2>
+    <p class="dica">Bloqueado por excesso de tentativas de login.</p>
+    <button>Desbloquear</button>
+  </form>
+  {% endif %}
+
+  <details class="acao">
+    <summary>Desativar</summary>
+    <form method="post" action="/usuarios/{{ alvo.id }}/desativar">
+      {{ m.csrf() }}
+      <label>Motivo <textarea name="motivo" minlength="5" maxlength="500" required></textarea></label>
+      <button class="perigo">Desativar usuário</button>
+    </form>
+  </details>
+  {% else %}
+  <form class="painel" method="post" action="/usuarios/{{ alvo.id }}/reativar"
+        data-confirmar="Reativar {{ alvo.login }} com nova senha temporária?">
+    {{ m.csrf() }}
+    <h2>Reativar</h2>
+    <p class="dica">Reativa com uma nova senha temporária.</p>
+    <button>Reativar</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<h2>Atividade recente</h2>
+<div class="tabela"><table>
+  <thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Alvo</th><th>IP</th></tr></thead>
+  <tbody>
+  {% for a in trilha %}
+    <tr><td>{{ a.quando | datahora('%d/%m/%Y %H:%M:%S') }}</td><td>{{ a.usuario or '—' }}</td>
+        <td>{{ ACOES.get(a.acao, a.acao) }}</td><td>{{ a.alvo or '—' }}</td><td>{{ a.ip or '—' }}</td></tr>
+  {% else %}<tr><td colspan="5" class="vazio">Sem eventos.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

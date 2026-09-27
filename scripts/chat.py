@@ -81,7 +81,7 @@ def main():
     p.add_argument("message", nargs="?", help="mensagem; se omitida, abre o modo interativo")
     p.add_argument("--base", default=os.environ.get("BASE", "https://localhost"), help="URL base (env BASE)")
     p.add_argument("--key", default=os.environ.get("KEY"), help="chave sk-... (env KEY)")
-    p.add_argument("--model", default=os.environ.get("MODEL", "llama3.2"), help="modelo (env MODEL)")
+    p.add_argument("--model", default=os.environ.get("MODEL"), help="nome público do modelo (env MODEL)")
     p.add_argument("--system", help="prompt de sistema opcional")
     p.add_argument("--stream", action="store_true", help="recebe a resposta em streaming")
     p.add_argument("--timeout", type=float, default=300, help="timeout em segundos (padrão 300)")
@@ -94,6 +94,8 @@ def main():
 
     if not args.key:
         p.error("informe a chave com --key ou pela variável de ambiente KEY")
+    if not args.model:
+        p.error("informe o modelo com --model ou pela variável de ambiente MODEL (GET /v1/models lista os liberados)")
 
     messages = [{"role": "system", "content": args.system}] if args.system else []
 

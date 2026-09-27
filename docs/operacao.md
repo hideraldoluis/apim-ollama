@@ -40,19 +40,16 @@ Depois de alterar o `.env`: `docker compose up -d` (recria só o que mudou).
 
 ## Gerenciar modelos
 
+Não há modelos fixos: o `config/litellm.yaml` tem `model_list: []`, e uma instalação nova não atende nenhum modelo. Todos são gerenciados pelo [painel](painel.md#modelos) (tela **Modelos**): baixar, publicar no gateway, retirar, remover e carregar, com proteções e auditoria. A publicação fica no banco do gateway (`STORE_MODEL_IN_DB=True`), vale na hora e sobrevive a reinícios.
+
+Pelo host, só para consulta ou download:
+
 ```bash
-scripts/pull-model.sh <modelo>                # baixa (ex.: llama3.2)
+scripts/pull-model.sh <modelo>                # baixa (ex.: qwen2.5:7b); publique pelo painel
 docker compose exec ollama ollama list        # o que está instalado
-docker compose exec ollama ollama rm <modelo> # remove
 ```
 
-Para **publicar** um modelo na API, declare-o em `config/litellm.yaml` (`model_list`) e reinicie o gateway:
-
-```bash
-docker compose restart litellm
-```
-
-Depois, libere-o nas chaves que devem usá-lo (as chaves têm allowlist de modelos; veja abaixo). Modelos grandes só devem ser adicionados após medir memória e tokens/s; ajuste `OLLAMA_NUM_PARALLEL` e `OLLAMA_MAX_LOADED_MODELS` de acordo, e o `global_max_parallel_requests` em `config/litellm.yaml`.
+Depois de publicar, libere o modelo nas chaves que devem usá-lo (as chaves têm allowlist de modelos; veja abaixo). Modelos grandes só devem ser adicionados após medir memória e tokens/s; ajuste `OLLAMA_NUM_PARALLEL` e `OLLAMA_MAX_LOADED_MODELS` de acordo, e o `global_max_parallel_requests` em `config/litellm.yaml`.
 
 ## Chaves de consumidores
 
@@ -60,15 +57,16 @@ Os scripts falam com `127.0.0.1:4000` e leem `LITELLM_MASTER_KEY` do `.env`.
 
 ```bash
 # create-key.sh <alias> [modelos] [rpm] [paralelas] [validade]
-scripts/create-key.sh time-dados                          # todos os padrões do .env
-scripts/create-key.sh time-dados llama3.2,outro 60 4 30d  # tudo explícito
-scripts/create-key.sh time-dados "" "" "" 30d             # só a validade; o resto usa o padrão
-scripts/create-key.sh servico-x llama3.2 30 2 never       # sem expiração
+scripts/create-key.sh time-dados qwen2.5                  # modelos explícitos; o resto do .env
+scripts/create-key.sh time-dados qwen2.5,outro 60 4 30d   # tudo explícito
+scripts/create-key.sh time-dados "" "" "" 30d             # modelos de KEY_DEFAULT_MODELS; validade 30d
+scripts/create-key.sh servico-x qwen2.5 30 2 never        # sem expiração
 scripts/list-keys.sh
 scripts/update-key.sh sk-... --duration 60d --rpm 120     # altera uma chave existente
 scripts/revoke-key.sh sk-...
 ```
 
+- Os modelos são obrigatórios e precisam estar publicados no gateway; o script recusa os demais. No LiteLLM, uma chave com lista de modelos vazia liberaria **todos**, por isso a lista vazia é proibida.
 - Uma chave por consumidor (time ou serviço), para atribuir uso e revogar sem afetar os demais.
 - A chave só aparece na criação. Entregue por canal seguro.
 - **Rotação:** crie a nova chave, entregue ao consumidor, revogue a antiga após a migração.
@@ -79,7 +77,7 @@ Os padrões são definidos no `.env` e lidos a cada execução do script (não �
 
 | Variável | Parâmetro | Valor embutido |
 |---|---|---|
-| `KEY_DEFAULT_MODELS` | modelos liberados, separados por vírgula | `llama3.2` |
+| `KEY_DEFAULT_MODELS` | modelos liberados, separados por vírgula (publicados no gateway) | nenhum: obrigatório informar |
 | `KEY_DEFAULT_RPM` | requisições por minuto | `30` |
 | `KEY_DEFAULT_PARALLEL` | requisições simultâneas | `2` |
 | `KEY_DEFAULT_DURATION` | validade da chave | `90d` |
@@ -93,6 +91,8 @@ Formato: `<número><unidade>` com unidade `s`, `m`, `h`, `d`, `w` ou `mo` (ex.: 
 `update-key.sh --duration <valor>` redefine a validade de uma chave existente, **contada a partir de agora** (não soma à validade atual); `--duration never` remove a expiração. Chaves expiradas passam a receber `401`. Uma chave sem expiração só deixa de valer se for revogada, então prefira validade finita para consumidores humanos e reserve `never` para serviços com rotação controlada.
 
 ## Consultar uso e logs
+
+O caminho recomendado é o [painel de governança](painel.md): consumo por chave, logs sem texto para leitores e texto só para admin, com auditoria. As consultas abaixo continuam valendo no host.
 
 ### Registro de prompts no banco
 
@@ -136,7 +136,9 @@ where "startTime" > now() - interval '7 days'
 group by 1 order by tok_total desc;
 ```
 
-> **Dado sensível.** O banco passa a conter o conteúdo integral de prompts e respostas. Restrinja o acesso ao host e ao Postgres (a porta 5432 não é publicada), trate os backups do banco com o mesmo cuidado e considere a política de retenção: por padrão nada é apagado e a tabela cresce a cada requisição. Para apagar registros antigos automaticamente, defina em `general_settings` de `config/litellm.yaml` `maximum_spend_logs_retention_period: "30d"` (e opcionalmente `maximum_spend_logs_retention_interval`) e reinicie o gateway.
+> **Dado sensível.** O banco contém o conteúdo integral de prompts e respostas. Restrinja o acesso ao host e ao Postgres (a porta 5432 não é publicada) e trate os backups do banco com o mesmo cuidado.
+>
+> **Retenção: 180 dias.** O gateway apaga diariamente os registros com mais de 180 dias (`maximum_spend_logs_retention_period: "180d"` em `config/litellm.yaml`). Os totais diários de consumo por chave ficam no schema `painel` e não são apagados. Não guarde dumps do banco por mais de 180 dias, senão o texto sobrevive à retenção. Acompanhe pela tela **Retenção** do [painel](painel.md).
 
 ### Outras consultas
 
@@ -161,7 +163,7 @@ gunzip -c backup-litellm-AAAA-MM-DD.sql.gz | docker compose exec -T postgres psq
 docker run --rm -v apim-ollama_caddy-data:/data -v "$PWD":/backup alpine tar czf /backup/caddy-data-$(date +%F).tgz -C /data .
 ```
 
-Guarde `.env` e backups fora da máquina e protegidos (contêm segredos). Defina a frequência conforme a criticidade; sugestão: diária para o Postgres.
+Guarde `.env` e backups fora da máquina e protegidos (contêm segredos). Defina a frequência conforme a criticidade; sugestão: diária para o Postgres, apagando dumps com mais de 180 dias (retenção dos logs). O dump inclui o schema `painel` (usuários, auditoria, histórico de chaves e consumo consolidado).
 
 ## Diagnóstico
 
@@ -176,6 +178,9 @@ Guarde `.env` e backups fora da máquina e protegidos (contêm segredos). Defina
 | Erro de certificado no cliente | CA interna não instalada | Veja [rede-e-tls.md](rede-e-tls.md). |
 | `litellm` não sobe | `.env` incompleto ou Postgres indisponível | `docker compose logs litellm postgres`. |
 | Rota `/ui` ou `/key/*` dá 404 | Comportamento esperado na borda | Use `127.0.0.1:4000` no próprio host. |
+| Painel (`:8443`) responde 403 | IP fora de `PAINEL_CIDR` | Ajuste `PAINEL_CIDR` no `.env` e `docker compose up -d caddy`. |
+| `painel` não sobe | `painel-init` falhou (senhas `PAINEL_DB_*` ausentes ou LiteLLM fora do ar) | `docker compose logs painel-init painel`. A API não depende do painel. |
+| Ninguém consegue entrar no painel | Senhas perdidas ou contas bloqueadas/desativadas | `docker compose run --rm painel python -m app.cli recuperar <login>` ([painel.md](painel.md#recuperação)). |
 
 ## Checklist pós-deploy
 
@@ -184,3 +189,4 @@ Guarde `.env` e backups fora da máquina e protegidos (contêm segredos). Defina
 3. `scripts/smoke-test.sh https://<SITE_ADDRESS> <chave> <modelo>` passa.
 4. A porta 11434 não responde de outro host; a 4000 só em loopback; a 443 só do CIDR interno.
 5. Backup do Postgres testado (restore em ambiente de teste).
+6. Painel: primeiro admin criado, `:8443` abre da rede de gestão e responde 403 de fora dela.

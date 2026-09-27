@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Visão geral{% endblock %}
+{% block conteudo %}
+<h1>Visão geral</h1>
+<p class="sub">De {{ inicio | data }} a {{ fim | data }}</p>
+
+<div class="cartoes">
+  <div class="cartao"><div class="rotulo">Requisições</div><div class="valor">{{ total.requisicoes | numero }}</div></div>
+  <div class="cartao"><div class="rotulo">Tokens processados</div><div class="valor">{{ total.tok_total | numero }}</div></div>
+  <div class="cartao"><div class="rotulo">Com erro</div><div class="valor">{{ total.erros | numero }}</div></div>
+  <div class="cartao"><div class="rotulo">Chaves válidas</div><div class="valor">{{ total.chaves_ativas | numero }}</div></div>
+</div>
+
+{% if atencao %}
+<div class="painel">
+  <h2>Chaves que pedem atenção</h2>
+  <div class="tabela"><table>
+    <thead><tr><th>Chave</th><th>Situação</th><th>Expira em</th></tr></thead>
+    <tbody>
+    {% for k in atencao %}
+      <tr><td><a href="/chaves/{{ k.token }}">{{ k.key_alias or k.key_name }}</a></td>
+          <td>{{ m.status_chave(k.status) }}</td><td>{{ k.expira_em | datahora }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<div class="colunas">
+  <div class="painel">
+    <h2>Tokens por dia</h2>
+    <div class="tabela"><table>
+      <thead><tr><th>Dia</th><th class="num">Requisições</th><th class="num">Tokens</th><th></th></tr></thead>
+      <tbody>
+      {% for r in por_dia %}
+        <tr><td>{{ r.dia | data }}</td><td class="num">{{ r.requisicoes | numero }}</td>
+            <td class="num">{{ r.tok_total | numero }}</td>
+            <td><meter min="0" max="{{ max_dia }}" value="{{ r.tok_total }}"></meter></td></tr>
+      {% else %}<tr><td colspan="4" class="vazio">Sem uso no período.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+  <div class="painel">
+    <h2>Maiores consumidores</h2>
+    <div class="tabela"><table>
+      <thead><tr><th>Chave</th><th class="num">Requisições</th><th class="num">Tokens</th></tr></thead>
+      <tbody>
+      {% for r in top %}
+        <tr><td>{% if r.chave %}<a href="/chaves/{{ r.chave }}">{{ r.alias or '(sem nome)' }}</a>{% else %}<span class="selo neutro">sem chave válida</span>{% endif %}</td>
+            <td class="num">{{ r.requisicoes | numero }}</td><td class="num">{{ r.tok_total | numero }}</td></tr>
+      {% else %}<tr><td colspan="3" class="vazio">Sem uso no período.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    <p><a href="/consumo">Consumo completo por chave →</a></p>
+  </div>
+</div>
+
+<div class="painel">
+  <h2>Desempenho por modelo</h2>
+  <div class="tabela"><table>
+    <thead><tr><th>Modelo</th><th class="num">Requisições</th><th class="num">Erros</th><th class="num">Latência p50</th><th class="num">Latência p95</th></tr></thead>
+    <tbody>
+    {% for r in modelos %}
+      <tr><td>{{ r.modelo or '—' }}</td><td class="num">{{ r.requisicoes | numero }}</td><td class="num">{{ r.erros | numero }}</td>
+          <td class="num">{{ r.p50_ms | numero }} ms</td><td class="num">{{ r.p95_ms | numero }} ms</td></tr>
+    {% else %}<tr><td colspan="5" class="vazio">Sem requisições no período.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

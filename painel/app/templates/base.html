@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Painel{% endblock %} · apim-ollama</title>
+  <link rel="stylesheet" href="/static/painel.css">
+  <script src="/static/painel.js" defer></script>
+</head>
+<body>
+{% if usuario %}
+<header class="topo">
+  <a class="marca" href="/">apim-ollama <span>painel</span></a>
+  <nav>
+    {% set atual = request.url.path %}
+    <a href="/" {% if atual == '/' %}aria-current="page"{% endif %}>Visão geral</a>
+    <a href="/chaves" {% if atual.startswith('/chaves') %}aria-current="page"{% endif %}>Chaves</a>
+    <a href="/consumo" {% if atual.startswith('/consumo') %}aria-current="page"{% endif %}>Consumo</a>
+    <a href="/logs" {% if atual.startswith('/logs') %}aria-current="page"{% endif %}>Logs</a>
+    <a href="/modelos" {% if atual.startswith('/modelos') %}aria-current="page"{% endif %}>Modelos</a>
+    {% if usuario.papel == 'admin' %}
+    <a href="/usuarios" {% if atual.startswith('/usuarios') %}aria-current="page"{% endif %}>Usuários</a>
+    <a href="/auditoria" {% if atual.startswith('/auditoria') %}aria-current="page"{% endif %}>Auditoria</a>
+    <a href="/retencao" {% if atual.startswith('/retencao') %}aria-current="page"{% endif %}>Retenção</a>
+    {% endif %}
+  </nav>
+  <div class="conta">
+    <span>{{ usuario.login }} <span class="papel">{{ usuario.papel }}</span></span>
+    <a href="/trocar-senha">Trocar senha</a>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf" value="{{ usuario.csrf }}">
+      <button class="link">Sair</button>
+    </form>
+  </div>
+</header>
+{% endif %}
+<main>
+  {% if flash %}<p class="aviso {{ flash.tipo }}" role="status">{{ flash.texto }}</p>{% endif %}
+  {% block conteudo %}{% endblock %}
+</main>
+</body>
+</html>

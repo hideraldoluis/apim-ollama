@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titulo %}Retenção{% endblock %}
+{% block conteudo %}
+<h1>Retenção</h1>
+<p class="sub">Os logs de requisição (com prompts e respostas) são apagados pelo gateway após {{ periodo_dias }} dias
+(<code>maximum_spend_logs_retention_period</code> em <code>config/litellm.yaml</code>). Os totais diários de consumo,
+o histórico de chaves e a auditoria do painel não são apagados.</p>
+
+{% set dias = ((r.mais_recente - r.mais_antigo).days) if r.mais_antigo and r.mais_recente else 0 %}
+{% if dias > periodo_dias + 2 %}
+<p class="aviso erro">O registro mais antigo tem {{ dias }} dias, mais que o período configurado. Verifique se a limpeza do LiteLLM está rodando (<code>docker compose logs litellm</code>).</p>
+{% endif %}
+
+<div class="cartoes">
+  <div class="cartao"><div class="rotulo">Registro mais antigo</div><div class="valor">{{ r.mais_antigo | datahora('%d/%m/%Y') }}</div></div>
+  <div class="cartao"><div class="rotulo">Registros (estimativa)</div><div class="valor">{{ r.registros_estimados | numero if r.registros_estimados and r.registros_estimados > 0 else '—' }}</div></div>
+  <div class="cartao"><div class="rotulo">Tamanho da tabela</div><div class="valor">{{ r.tamanho }}</div></div>
+  <div class="cartao"><div class="rotulo">Janela coberta</div><div class="valor">{{ dias }} dias</div></div>
+</div>
+
+<div class="painel">
+  <h2>Consumo consolidado</h2>
+  <dl class="dados">
+    <dt>Consolidado até</dt><dd>{{ consolidacao.ate | data }}</dd>
+    <dt>Primeiro dia guardado</dt><dd>{{ consolidacao.desde | data }}</dd>
+    <dt>Linhas (dia × chave × modelo)</dt><dd>{{ consolidacao.linhas | numero }}</dd>
+  </dl>
+  <p class="dica">A consolidação roda a cada 15 minutos e reprocessa o último dia, então os totais não dependem dos logs brutos.</p>
+</div>
+{% endblock %}

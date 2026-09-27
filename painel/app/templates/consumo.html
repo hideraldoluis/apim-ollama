@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Consumo{% endblock %}
+
+{% macro chave_nome(r) -%}
+{% if r.chave %}<a href="/chaves/{{ r.chave }}">{{ r.alias or '(sem nome)' }}</a>{% if not r.existe %} <span class="selo neutro">revogada</span>{% endif %}
+{%- else %}<span class="selo neutro">sem chave válida</span>{% endif %}
+{%- endmacro %}
+
+{% macro metricas(r) -%}
+<td class="num">{{ r.requisicoes | numero }}</td>
+<td class="num">{{ r.erros | numero }}</td>
+<td class="num">{{ r.tok_prompt | numero }}</td>
+<td class="num">{{ r.tok_resposta | numero }}</td>
+<td class="num">{{ r.tok_total | numero }}</td>
+{%- endmacro %}
+
+{% block conteudo %}
+<h1>Consumo</h1>
+<p class="sub">Tokens contados pelo Ollama. O nome da chave e do modelo são os vigentes no momento das requisições.
+Os totais diários ficam guardados mesmo depois que os logs saem da retenção de 180 dias.</p>
+{{ m.periodo(inicio, fim, {'visao': visao}) }}
+
+<div class="cartoes">
+  <div class="cartao"><div class="rotulo">Tokens totais</div><div class="valor">{{ total.tok_total | numero }}</div></div>
+  <div class="cartao"><div class="rotulo">Tokens de prompt</div><div class="valor">{{ total.tok_prompt | numero }}</div></div>
+  <div class="cartao"><div class="rotulo">Tokens de resposta</div><div class="valor">{{ total.tok_resposta | numero }}</div></div>
+  <div class="cartao"><div class="rotulo">Requisições</div><div class="valor">{{ total.requisicoes | numero }}</div></div>
+  <div class="cartao"><div class="rotulo">Com erro</div><div class="valor">{{ total.erros | numero }}{% if total.requisicoes %} <span class="dica">({{ ('%.1f' | format(100 * total.erros / total.requisicoes)) | replace('.', ',') }}%)</span>{% endif %}</div></div>
+  <div class="cartao"><div class="rotulo">Chaves com uso</div><div class="valor">{{ qtd_chaves }}</div></div>
+  <div class="cartao"><div class="rotulo">Modelos usados</div><div class="valor">{{ qtd_modelos }}</div></div>
+</div>
+
+<div class="linha-botoes">
+  <nav class="abas" aria-label="Visão">
+    {% for v, rotulo in [('chave', 'Por chave'), ('modelo', 'Por modelo'), ('chave_modelo', 'Chave × modelo')] %}
+    <a href="/consumo?desde={{ inicio }}&ate={{ fim }}&visao={{ v }}" {% if v == visao %}aria-current="page"{% endif %}>{{ rotulo }}</a>
+    {% endfor %}
+  </nav>
+  <a class="botao secundario" href="/consumo.csv?desde={{ inicio }}&ate={{ fim }}&visao={{ visao }}">Exportar CSV</a>
+</div>
+
+<div class="tabela"><table>
+{% if visao == 'modelo' %}
+  <thead><tr>
+    <th>Modelo</th><th class="num">Chaves</th><th class="num">Requisições</th><th class="num">Erros</th>
+    <th class="num">Tokens prompt</th><th class="num">Tokens resposta</th><th class="num">Total</th><th></th>
+  </tr></thead>
+  <tbody>
+  {% for r in linhas %}
+    <tr>
+      <td>{{ r.modelo or '(não informado)' }}</td>
+      <td class="num">{{ r.qtd_chaves }}</td>
+      {{ metricas(r) }}
+      <td><meter min="0" max="{{ max_tok }}" value="{{ r.tok_total }}"></meter></td>
+    </tr>
+  {% else %}<tr><td colspan="8" class="vazio">Sem uso no período.</td></tr>{% endfor %}
+  </tbody>
+  {% set rodape = 2 %}
+
+{% elif visao == 'chave_modelo' %}
+  <thead><tr>
+    <th>Chave / modelo</th><th>Criada para</th><th class="num">Requisições</th><th class="num">Erros</th>
+    <th class="num">Tokens prompt</th><th class="num">Tokens resposta</th><th class="num">Total</th><th></th>
+  </tr></thead>
+  {% for c in linhas %}
+  <tbody class="grupo">
+    <tr class="subtotal">
+      <td>{{ chave_nome(c) }}</td>
+      <td>{{ c.criado_para or '—' }}</td>
+      {{ metricas(c) }}
+      <td><meter min="0" max="{{ max_tok }}" value="{{ c.tok_total }}"></meter></td>
+    </tr>
+    {% for r in c.modelos %}
+    <tr class="detalhe">
+      <td>{{ r.modelo or '(não informado)' }}</td>
+      <td></td>
+      {{ metricas(r) }}
+      <td><meter min="0" max="{{ c.tok_total or 1 }}" value="{{ r.tok_total }}" title="Parcela desta chave"></meter></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  {% else %}<tbody><tr><td colspan="8" class="vazio">Sem uso no período.</td></tr></tbody>{% endfor %}
+  {% set rodape = 2 %}
+
+{% else %}
+  <thead><tr>
+    <th>Chave</th><th>Criada para</th><th>Modelos</th><th class="num">Requisições</th><th class="num">Erros</th>
+    <th class="num">Tokens prompt</th><th class="num">Tokens resposta</th><th class="num">Total</th><th></th>
+  </tr></thead>
+  <tbody>
+  {% for r in linhas %}
+    <tr>
+      <td>{{ chave_nome(r) }}</td>
+      <td>{{ r.criado_para or '—' }}</td>
+      <td>{{ r.modelos | map(attribute='modelo') | reject('equalto', '') | join(', ') or '—' }}</td>
+      {{ metricas(r) }}
+      <td><meter min="0" max="{{ max_tok }}" value="{{ r.tok_total }}"></meter></td>
+    </tr>
+  {% else %}<tr><td colspan="9" class="vazio">Sem uso no período.</td></tr>{% endfor %}
+  </tbody>
+  {% set rodape = 3 %}
+{% endif %}
+  {% if linhas %}
+  <tfoot><tr><td colspan="{{ rodape }}">Total</td>{{ metricas(total) }}<td></td></tr></tfoot>
+  {% endif %}
+</table></div>
+{% endblock %}

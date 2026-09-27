@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block conteudo %}
+<div class="login">
+  <h1>apim-ollama</h1>
+  <p class="sub">Painel de governança de chaves e logs</p>
+  {% if erro %}<p class="aviso erro" role="alert">{{ erro }}</p>{% endif %}
+  <form class="painel" method="post" action="/login">
+    <input type="hidden" name="csrf" value="{{ csrf_pre }}">
+    <label>Usuário <input name="login" autocomplete="username" required autofocus></label>
+    <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>
+    <button>Entrar</button>
+  </form>
+</div>
+{% endblock %}

@@ -51,7 +51,9 @@ services:
       LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?defina LITELLM_SALT_KEY no .env}
       DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD}@postgres:5432/litellm
       OLLAMA_API_BASE: http://ollama:11434
-      STORE_MODEL_IN_DB: "False"
+      # Permite publicar modelos pelo painel (gravados no banco, criptografados com LITELLM_SALT_KEY).
+      # Todos os modelos vêm daqui: o config/litellm.yaml não declara nenhum.
+      STORE_MODEL_IN_DB: "True"
     volumes:
       - ./config/litellm.yaml:/app/config.yaml:ro
     ports:
@@ -63,19 +65,65 @@ services:
       postgres:
         condition: service_healthy
 
-  # Borda: TLS + expõe apenas as rotas públicas da API.
+  # Cria/atualiza o schema do painel (roles, tabelas, funções). Roda e termina a cada "up".
+  painel-init:
+    image: postgres:16-alpine
+    restart: "no"
+    entrypoint: ["sh", "/sql/init.sh"]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PAINEL_DB_APP_PASSWORD: ${PAINEL_DB_APP_PASSWORD:?defina PAINEL_DB_APP_PASSWORD no .env}
+      PAINEL_DB_CONTEUDO_PASSWORD: ${PAINEL_DB_CONTEUDO_PASSWORD:?defina PAINEL_DB_CONTEUDO_PASSWORD no .env}
+    volumes:
+      - ./painel/sql:/sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      litellm:
+        condition: service_started
+
+  # Painel de governança de chaves e logs. Acesso pelo Caddy (:8443, restrito a PAINEL_CIDR)
+  # ou, em emergência, por túnel SSH para 127.0.0.1:8080.
+  painel:
+    build: ./painel
+    restart: unless-stopped
+    environment:
+      PAINEL_DSN_APP: postgresql://painel_app:${PAINEL_DB_APP_PASSWORD}@postgres:5432/litellm
+      PAINEL_DSN_CONTEUDO: postgresql://painel_conteudo:${PAINEL_DB_CONTEUDO_PASSWORD}@postgres:5432/litellm
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      OLLAMA_URL: http://ollama:11434
+      PAINEL_FUSO: ${PAINEL_FUSO:-America/Sao_Paulo}
+      PAINEL_INATIVIDADE_DIAS: ${PAINEL_INATIVIDADE_DIAS:-90}
+      PAINEL_ROTACAO_CARENCIA_DIAS: ${PAINEL_ROTACAO_CARENCIA_DIAS:-7}
+      KEY_DEFAULT_MODELS: ${KEY_DEFAULT_MODELS:-}
+      KEY_DEFAULT_RPM: ${KEY_DEFAULT_RPM:-}
+      KEY_DEFAULT_PARALLEL: ${KEY_DEFAULT_PARALLEL:-}
+      KEY_DEFAULT_DURATION: ${KEY_DEFAULT_DURATION:-}
+    ports:
+      # Somente loopback do host: acesso de emergência por túnel SSH.
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      painel-init:
+        condition: service_completed_successfully
+
+  # Borda: TLS + expõe apenas as rotas públicas da API e, na 8443, o painel.
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+      # Vazio = ninguém acessa o painel pela rede (0.0.0.0/32 não corresponde a nenhum cliente).
+      PAINEL_CIDR: ${PAINEL_CIDR:-0.0.0.0/32}
     ports:
       - "443:443"
       - "80:80"
+      - "8443:8443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+    # Sem depends_on do painel de propósito: uma falha no painel não pode derrubar a API.
     depends_on:
       - litellm
 

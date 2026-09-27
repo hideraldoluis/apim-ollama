@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Modelos{% endblock %}
+{% block conteudo %}
+<h1>Modelos</h1>
+<p class="sub">Um modelo precisa estar <strong>instalado no Ollama</strong> e <strong>publicado no gateway</strong> para os consumidores o usarem,
+e ainda ser liberado em cada chave. Uso de {{ inicio | data }} a {{ fim | data }}.</p>
+{% for e in erros %}<p class="aviso erro">{{ e }}</p>{% endfor %}
+
+<div class="cartoes">
+  <div class="cartao"><div class="rotulo">Publicados no gateway</div><div class="valor">{{ publicados | length }}</div></div>
+  <div class="cartao"><div class="rotulo">Instalados no Ollama</div><div class="valor">{{ instalados | length }}</div></div>
+  <div class="cartao"><div class="rotulo">Carregados na memória</div><div class="valor">{{ instalados | selectattr('carregado') | list | length }} <span class="dica">{{ memoria | bytes }}</span></div></div>
+  <div class="cartao"><div class="rotulo">Versão do Ollama</div><div class="valor">{{ versao or '—' }}</div></div>
+</div>
+
+<h2>Publicados no gateway</h2>
+<div class="tabela"><table>
+  <thead><tr>
+    <th>Nome público</th><th>Modelo no Ollama</th><th>Tipo</th><th>Situação</th><th>Chaves</th>
+    <th class="num">Requisições</th><th class="num">Tokens</th>{% if usuario.papel == 'admin' %}<th></th>{% endif %}
+  </tr></thead>
+  <tbody>
+  {% for p in publicados %}
+    <tr>
+      <td><strong>{{ p.nome }}</strong></td>
+      <td class="mono">{{ p.ollama or p.interno }}</td>
+      <td>{{ 'embedding' if p.embedding else 'chat' }}</td>
+      <td>
+        {% if p.instalado is false %}<span class="selo expirada">não instalado</span>
+        {% elif p.carregado %}<span class="selo ativa">na memória</span>
+        {% else %}<span class="selo neutro">em disco</span>{% endif %}
+      </td>
+      <td>{% if p.chaves %}<span title="{{ p.chaves | map(attribute='key_alias') | join(', ') }}">{{ p.chaves | length }}</span>{% else %}0{% endif %}</td>
+      <td class="num">{{ p.uso.requisicoes | numero if p.uso else 0 }}</td>
+      <td class="num">{{ p.uso.tok_total | numero if p.uso else 0 }}</td>
+      {% if usuario.papel == 'admin' %}
+      <td>
+        <details class="acao">
+          <summary>Retirar</summary>
+          <form method="post" action="/modelos/despublicar">
+            {{ m.csrf() }}
+            <input type="hidden" name="model_id" value="{{ p.id }}">
+            {% if p.chaves %}<p class="dica">Liberado em {{ p.chaves | length }} chave(s): retire-o delas antes.</p>{% endif %}
+            <label>Digite <strong>{{ p.nome }}</strong> <input name="confirmacao" autocomplete="off" required></label>
+            <button class="perigo">Retirar do gateway</button>
+          </form>
+        </details>
+      </td>
+      {% endif %}
+    </tr>
+  {% else %}<tr><td colspan="8" class="vazio">Nenhum modelo publicado: a API ainda não atende nenhum modelo.
+    {% if usuario.papel == 'admin' %}Baixe um modelo abaixo e publique-o.{% endif %}</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Instalados no Ollama</h2>
+<div class="tabela"><table>
+  <thead><tr>
+    <th>Modelo</th><th>Família</th><th>Parâmetros</th><th>Quantização</th><th class="num">Contexto</th>
+    <th class="num">Tamanho</th><th>Capacidades</th><th>Memória</th><th>Publicado como</th>{% if usuario.papel == 'admin' %}<th></th>{% endif %}
+  </tr></thead>
+  <tbody>
+  {% for i in instalados %}
+    <tr>
+      <td class="mono">{{ i.nome }}</td>
+      <td>{{ i.familia or '—' }}</td>
+      <td>{{ i.parametros or '—' }}</td>
+      <td>{{ i.quantizacao or '—' }}</td>
+      <td class="num">{{ i.contexto | numero }}</td>
+      <td class="num">{{ i.tamanho | bytes }}</td>
+      <td>{{ i.capacidades | join(', ') or '—' }}</td>
+      <td>{% if i.carregado %}<span class="selo ativa">{{ i.carregado.tamanho | bytes }}</span>
+          {% if i.carregado.vram is not none and i.carregado.tamanho and i.carregado.vram < i.carregado.tamanho %}
+          <span class="selo expirando" title="Parte do modelo está na CPU">{{ (100 * i.carregado.vram / i.carregado.tamanho) | round | int }}% GPU</span>{% endif %}
+          {% else %}—{% endif %}</td>
+      <td>{{ i.publicado_como | map(attribute='nome') | join(', ') or '—' }}</td>
+      {% if usuario.papel == 'admin' %}
+      <td>
+        <div class="acoes-linha">
+          <details class="acao">
+            <summary>Publicar</summary>
+            <form method="post" action="/modelos/publicar">
+              {{ m.csrf() }}
+              <input type="hidden" name="modelo" value="{{ i.nome }}">
+              <label>Nome público <input name="nome_publico" value="{{ i.sugestao_publica }}" required></label>
+              <p class="dica">Tipo: {{ 'embedding' if i.embedding else 'chat' }}. Depois, libere-o nas chaves.</p>
+              <button>Publicar</button>
+            </form>
+          </details>
+          <form method="post" action="/modelos/{{ 'descarregar' if i.carregado else 'carregar' }}">
+            {{ m.csrf() }}
+            <input type="hidden" name="modelo" value="{{ i.nome }}">
+            <button class="secundario">{{ 'Descarregar' if i.carregado else 'Carregar' }}</button>
+          </form>
+          {% if not i.publicado_como %}
+          <details class="acao">
+            <summary>Remover</summary>
+            <form method="post" action="/modelos/remover">
+              {{ m.csrf() }}
+              <input type="hidden" name="modelo" value="{{ i.nome }}">
+              <p class="dica">Apaga os arquivos do modelo ({{ i.tamanho | bytes }}).</p>
+              <label>Digite <strong>{{ i.nome }}</strong> <input name="confirmacao" autocomplete="off" required></label>
+              <button class="perigo">Remover do Ollama</button>
+            </form>
+          </details>
+          {% endif %}
+        </div>
+      </td>
+      {% endif %}
+    </tr>
+  {% else %}<tr><td colspan="10" class="vazio">Nenhum modelo instalado.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+
+<h2>Downloads</h2>
+{% if usuario.papel == 'admin' %}
+<form class="filtros" method="post" action="/modelos/baixar">
+  {{ m.csrf() }}
+  <label>Modelo do catálogo do Ollama
+    <input name="modelo" placeholder="ex.: qwen2.5:7b, nomic-embed-text" required size="32">
+  </label>
+  <button>Baixar</button>
+  <span class="dica">Nomes em ollama.com/library. Baixar um modelo já instalado o atualiza.</span>
+</form>
+{% endif %}
+<div class="tabela"><table data-downloads="/modelos/downloads.json">
+  <thead><tr><th>Modelo</th><th>Situação</th><th>Progresso</th><th>Por</th><th>Início</th><th>Fim</th></tr></thead>
+  <tbody>
+  {% for d in downloads %}
+    <tr data-download="{{ d.id }}" data-status="{{ d.status }}">
+      <td class="mono">{{ d.modelo }}</td>
+      <td><span class="selo {{ {'baixando': 'expirando', 'concluido': 'ativa', 'falhou': 'expirada', 'interrompido': 'neutro'}[d.status] }}">{{ d.status }}</span></td>
+      <td data-progresso>
+        {% if d.status == 'baixando' %}<progress max="100" {% if d.percentual is not none %}value="{{ d.percentual }}"{% endif %}></progress>
+          <span>{{ d.percentual ~ '%' if d.percentual is not none else '' }} {{ d.baixado | bytes }} / {{ d.total | bytes }} · {{ d.mensagem or '' }}</span>
+        {% elif d.status != 'concluido' %}{{ d.mensagem or '' }}{% else %}{{ d.total | bytes }}{% endif %}
+      </td>
+      <td>{{ d.iniciado_por }}</td>
+      <td>{{ d.iniciado_em | datahora }}</td>
+      <td>{{ d.finalizado_em | datahora }}</td>
+    </tr>
+  {% else %}<tr><td colspan="6" class="vazio">Nenhum download pelo painel.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

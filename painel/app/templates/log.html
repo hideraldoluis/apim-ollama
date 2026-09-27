@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Requisição{% endblock %}
+{% block conteudo %}
+<h1>Requisição <span class="selo {{ r.status }}">{{ 'sucesso' if r.status == 'success' else 'erro' }}</span></h1>
+<p class="sub"><a href="/logs?desde={{ (r.quando | datahora('%Y-%m-%d')) }}&ate={{ (r.quando | datahora('%Y-%m-%d')) }}">← voltar aos logs do dia</a></p>
+
+<div class="painel">
+  <dl class="dados">
+    <dt>Quando</dt><dd>{{ r.quando | datahora('%d/%m/%Y %H:%M:%S') }}</dd>
+    <dt>Chave (nome na época)</dt><dd>{% if r.chave %}<a href="/chaves/{{ r.chave }}">{{ r.alias or '(sem nome)' }}</a>{% else %}—{% endif %}</dd>
+    <dt>Criada para</dt><dd>{{ r.criado_para or '—' }}</dd>
+    <dt>Modelo</dt><dd>{{ r.modelo or '—' }}</dd>
+    <dt>Situação</dt><dd>{{ r.status }}{% if r.codigo_erro %} · código {{ r.codigo_erro }}{% endif %}{% if r.mensagem_erro %} · {{ r.mensagem_erro }}{% endif %}</dd>
+    <dt>Tokens</dt><dd>{{ r.tok_prompt | numero }} prompt · {{ r.tok_resposta | numero }} resposta · {{ r.tok_total | numero }} total</dd>
+    <dt>Duração</dt><dd>{{ r.duracao_ms | numero }} ms</dd>
+    <dt>IP do cliente</dt><dd>{{ r.ip or '—' }}</dd>
+    <dt>ID</dt><dd class="mono">{{ r.id }}</dd>
+  </dl>
+</div>
+
+<h2>Conteúdo</h2>
+{% if usuario.papel != 'admin' %}
+  <p class="restrito">O texto de prompts e respostas é visível apenas para administradores.</p>
+{% elif not conteudo %}
+  <form class="restrito" method="post" action="/logs/{{ r.id | urlencode }}/conteudo">
+    {{ m.csrf() }}
+    <p>O conteúdo pode conter dados sensíveis. A visualização fica registrada na auditoria com seu usuário.</p>
+    <button>Ver conteúdo</button>
+  </form>
+{% else %}
+  <p class="aviso atencao">Visualização registrada na auditoria.</p>
+  <div class="painel">
+    <h2>Prompt</h2>
+    {% for msg in conteudo.mensagens %}
+      <div class="mensagem"><div class="quem">{{ msg.papel }}</div><pre>{{ msg.texto }}</pre></div>
+    {% else %}<p class="vazio">Sem mensagens registradas.</p>{% endfor %}
+    <h2>Resposta</h2>
+    {% if conteudo.resposta %}<div class="mensagem"><pre>{{ conteudo.resposta }}</pre></div>
+    {% else %}<p class="vazio">Sem resposta registrada.</p>{% endif %}
+    <details><summary>Registro bruto (JSON)</summary><pre class="bruto">{{ conteudo.bruto }}</pre></details>
+  </div>
+{% endif %}
+{% endblock %}

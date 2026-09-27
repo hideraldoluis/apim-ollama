@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}Chaves revogadas{% endblock %}
+{% block conteudo %}
+<h1>Chaves revogadas</h1>
+<p class="sub">O gateway apaga a chave na revogação; este histórico guarda o retrato dela, quem revogou e por quê. O consumo antigo continua em Consumo e Logs.</p>
+<div class="tabela"><table>
+  <thead><tr><th>Nome</th><th>Criada para</th><th>Revogada em</th><th>Por</th><th>Motivo</th><th>Logs</th></tr></thead>
+  <tbody>
+  {% for r in linhas %}
+    <tr><td>{{ r.key_alias or '—' }}</td><td>{{ r.criado_para or '—' }}</td><td>{{ r.revogada_em | datahora }}</td>
+        <td>{{ r.revogada_por }}</td><td>{{ r.motivo }}</td>
+        <td><a href="/logs?chave={{ r.token }}&desde=2000-01-01">ver</a></td></tr>
+  {% else %}<tr><td colspan="6" class="vazio">Nenhuma chave revogada pelo painel.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

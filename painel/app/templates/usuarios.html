@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<h1>Usuários do painel</h1>
+<p class="sub">Admin gerencia chaves, usuários e vê o texto dos logs. Leitor vê chaves, consumo e logs sem texto.
+Usuários não são excluídos, apenas desativados.</p>
+<div class="linha-botoes">
+  <a class="botao" href="/usuarios/novo">Novo usuário</a>
+  <a class="botao secundario" href="/usuarios/revisao">Revisão de acessos</a>
+</div>
+<div class="tabela"><table>
+  <thead><tr><th>Login</th><th>Nome</th><th>Papel</th><th>Situação</th><th>Último login</th><th>Criado por</th></tr></thead>
+  <tbody>
+  {% for x in usuarios %}
+    <tr>
+      <td><a href="/usuarios/{{ x.id }}">{{ x.login }}</a></td>
+      <td>{{ x.nome }}</td>
+      <td>{{ x.papel }}</td>
+      <td>
+        {% if not x.ativo %}<span class="selo desativado">desativado</span>
+        {% elif x.bloqueado %}<span class="selo bloqueado">bloqueado</span>
+        {% elif x.temp_expirada %}<span class="selo desativado">senha temporária expirada</span>
+        {% elif x.deve_trocar_senha %}<span class="selo convidado">aguardando primeiro acesso</span>
+        {% else %}<span class="selo ativo">ativo</span>{% endif %}
+      </td>
+      <td>{{ x.ultimo_login | datahora }}</td>
+      <td>{{ x.criado_por }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

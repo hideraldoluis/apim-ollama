@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block conteudo %}
+<h1>{{ titulo }}: {{ alvo.login }}</h1>
+<div class="aviso atencao">
+  Entregue a senha temporária por um canal seguro. Ela vale por {{ horas }} horas, não será exibida de novo
+  e precisa ser trocada no primeiro acesso.
+</div>
+<div class="painel">
+  <div class="segredo">
+    <code id="temporaria">{{ temporaria }}</code>
+    <button type="button" data-copiar="temporaria">Copiar</button>
+  </div>
+</div>
+<p><a class="botao secundario" href="/usuarios/{{ alvo.id }}">Ir para o usuário</a></p>
+{% endblock %}

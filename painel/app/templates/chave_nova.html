@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Nova chave{% endblock %}
+{% block conteudo %}
+<h1>Nova chave</h1>
+<p class="sub">Os valores iniciais vêm dos padrões <code>KEY_DEFAULT_*</code> do <code>.env</code>.</p>
+{% if erro_gateway %}<p class="aviso erro">Não foi possível listar os modelos: {{ erro_gateway }}</p>{% endif %}
+{{ m.erros(erros) }}
+<form class="formulario painel" method="post" action="/chaves/nova">
+  {{ m.csrf() }}
+  <label>Nome da chave (alias)
+    <input name="alias" value="{{ form.alias }}" maxlength="100" required>
+    <span class="dica">Único. Identifica o consumidor nos logs (ex.: time-dados).</span>
+  </label>
+  <label>Criada para
+    <input name="criado_para" value="{{ form.criado_para }}" maxlength="100">
+    <span class="dica">Usuário, time ou grupo responsável. Se ficar vazio, usa o nome da chave. Não muda depois.</span>
+  </label>
+  <fieldset>
+    <legend>Modelos liberados</legend>
+    {% for mod in disponiveis %}
+      <label><input type="checkbox" name="modelos" value="{{ mod }}" {% if mod in form.modelos %}checked{% endif %}> {{ mod }}</label>
+    {% else %}<p class="dica">Nenhum modelo publicado no gateway. {% if usuario.papel == 'admin' %}Publique um em <a href="/modelos">Modelos</a> antes de criar chaves.{% endif %}</p>{% endfor %}
+  </fieldset>
+  <label>Requisições por minuto <input name="rpm" type="number" min="1" value="{{ form.rpm }}" required></label>
+  <label>Requisições simultâneas <input name="paralelas" type="number" min="1" value="{{ form.paralelas }}" required></label>
+  <label>Validade
+    <input name="validade" value="{{ form.validade }}" pattern="[0-9]+(s|m|h|d|w|mo)|never" required>
+    <span class="dica">30d, 12h, 6mo… ou <code>never</code> (sem expiração, só para serviços com rotação controlada).</span>
+  </label>
+  <div><button>Criar chave</button> <a href="/chaves">Cancelar</a></div>
+</form>
+{% endblock %}

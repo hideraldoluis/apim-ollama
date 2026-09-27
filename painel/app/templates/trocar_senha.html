@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Trocar senha{% endblock %}
+{% block conteudo %}
+<h1>Trocar senha</h1>
+{% if usuario.deve_trocar_senha %}
+<p class="aviso atencao">Você está usando uma senha temporária. Defina uma senha pessoal para continuar.</p>
+{% endif %}
+{{ m.erros(erros) }}
+<form class="formulario painel" method="post" action="/trocar-senha">
+  {{ m.csrf() }}
+  <label>Senha atual <input name="atual" type="password" autocomplete="current-password" required></label>
+  <label>Nova senha
+    <input name="nova" type="password" autocomplete="new-password" minlength="12" maxlength="256" required>
+    <span class="dica">Pelo menos 12 caracteres. Prefira uma frase. Não pode conter seu login ou nome, nem repetir as 5 últimas.</span>
+  </label>
+  <label>Confirme a nova senha <input name="confirmacao" type="password" autocomplete="new-password" required></label>
+  <div><button>Salvar</button></div>
+</form>
+{% endblock %}

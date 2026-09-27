@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Logs{% endblock %}
+{% block conteudo %}
+<h1>Logs de requisição</h1>
+<p class="sub">Somente metadados. O texto de prompts e respostas fica restrito a administradores e cada leitura é auditada.</p>
+
+<form class="filtros" method="get" action="/logs">
+  <label>De <input type="date" name="desde" value="{{ f.inicio }}"></label>
+  <label>Até <input type="date" name="ate" value="{{ f.fim }}"></label>
+  <label>Chave (nome)
+    <select name="alias"><option value="">todas</option>
+      {% for a in aliases %}<option {% if a == f.alias %}selected{% endif %}>{{ a }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Modelo
+    <select name="modelo"><option value="">todos</option>
+      {% for mo in modelos %}<option {% if mo == f.modelo %}selected{% endif %}>{{ mo }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Situação
+    <select name="status">
+      <option value="">todas</option>
+      <option value="success" {% if f.status == 'success' %}selected{% endif %}>sucesso</option>
+      <option value="failure" {% if f.status == 'failure' %}selected{% endif %}>erro</option>
+    </select>
+  </label>
+  {% if f.chave %}<input type="hidden" name="chave" value="{{ f.chave }}">{% endif %}
+  <button>Filtrar</button>
+</form>
+{% if f.chave %}<p class="aviso atencao">Filtrando pela chave <span class="mono">{{ f.chave[:12] }}…</span> · <a href="/logs?desde={{ f.inicio }}&ate={{ f.fim }}">remover filtro</a></p>{% endif %}
+
+{% set qs = 'desde=' ~ f.inicio ~ '&ate=' ~ f.fim ~ '&alias=' ~ (f.alias or '') | urlencode ~ '&modelo=' ~ (f.modelo or '') | urlencode ~ '&status=' ~ (f.status or '') ~ '&chave=' ~ (f.chave or '') %}
+<div class="linha-botoes">
+  <a class="botao secundario" href="/logs.csv?{{ qs }}">Exportar CSV (sem texto)</a>
+  {% if usuario.papel == 'admin' %}
+  <details class="acao">
+    <summary>Exportar com texto (admin)</summary>
+    <form method="post" action="/logs/exportar-conteudo">
+      {{ m.csrf() }}
+      <input type="hidden" name="desde" value="{{ f.inicio }}"><input type="hidden" name="ate" value="{{ f.fim }}">
+      <input type="hidden" name="alias" value="{{ f.alias or '' }}"><input type="hidden" name="modelo" value="{{ f.modelo or '' }}">
+      <input type="hidden" name="status" value="{{ f.status or '' }}"><input type="hidden" name="chave" value="{{ f.chave or '' }}">
+      <label>Justificativa (fica na auditoria) <textarea name="justificativa" minlength="5" maxlength="500" required></textarea></label>
+      <button>Exportar</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+
+<div class="tabela"><table>
+  <thead><tr>
+    <th>Quando</th><th>Chave</th><th>Modelo</th><th>Situação</th>
+    <th class="num">Tokens prompt</th><th class="num">Tokens resposta</th><th class="num">Total</th><th class="num">Duração</th><th></th>
+  </tr></thead>
+  <tbody>
+  {% for r in linhas %}
+    <tr>
+      <td>{{ r.quando | datahora('%d/%m %H:%M:%S') }}</td>
+      <td>{{ r.alias or '—' }}</td>
+      <td>{{ r.modelo or '—' }}</td>
+      <td><span class="selo {{ r.status }}">{{ 'sucesso' if r.status == 'success' else (r.codigo_erro or 'erro') }}</span></td>
+      <td class="num">{{ r.tok_prompt | numero }}</td>
+      <td class="num">{{ r.tok_resposta | numero }}</td>
+      <td class="num">{{ r.tok_total | numero }}</td>
+      <td class="num">{{ r.duracao_ms | numero }} ms</td>
+      <td><a href="/logs/{{ r.id | urlencode }}">detalhes</a></td>
+    </tr>
+  {% else %}<tr><td colspan="9" class="vazio">Nenhuma requisição com esses filtros.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+<div class="paginacao">
+  {% if paginado %}<a href="/logs?{{ qs }}">← Mais recentes</a>{% endif %}
+  {% if proxima %}<a href="/logs?{{ qs }}&apos={{ proxima.apos | urlencode }}&apos_id={{ proxima.apos_id | urlencode }}">Mais antigos →</a>{% endif %}
+</div>
+{% endblock %}

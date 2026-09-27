@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}{{ (k.key_alias if k else hist.key_alias) or 'Chave' }}{% endblock %}
+{% block conteudo %}
+{% if not k %}
+<h1>{{ hist.key_alias or 'Chave' }} <span class="selo expirada">revogada</span></h1>
+<div class="painel">
+  <dl class="dados">
+    <dt>Criada para</dt><dd>{{ hist.criado_para or '—' }}</dd>
+    <dt>Revogada em</dt><dd>{{ hist.revogada_em | datahora }}</dd>
+    <dt>Revogada por</dt><dd>{{ hist.revogada_por }}</dd>
+    <dt>Motivo</dt><dd>{{ hist.motivo }}</dd>
+    <dt>Identificador</dt><dd class="mono">{{ hist.token }}</dd>
+  </dl>
+</div>
+<p><a href="/logs?chave={{ hist.token }}&desde=2000-01-01">Ver os logs desta chave</a></p>
+{% else %}
+<h1>{{ k.key_alias or '(sem nome)' }} {{ m.status_chave(k.status) }}</h1>
+<p class="sub">Criada para <strong>{{ k.criado_para or '—' }}</strong></p>
+
+{% if agendada %}
+<p class="aviso atencao">Revogação agendada para {{ agendada.executar_em | datahora }} por {{ agendada.agendada_por }} ({{ agendada.motivo }}).</p>
+{% endif %}
+
+<div class="colunas">
+  <div class="painel">
+    <h2>Dados</h2>
+    <dl class="dados">
+      <dt>Final da chave</dt><dd class="mono">{{ k.key_name or '—' }}</dd>
+      <dt>Modelos</dt><dd>{{ (k.modelos or []) | join(', ') or 'todos' }}</dd>
+      <dt>Requisições/min</dt><dd>{{ k.rpm_limit | numero }}</dd>
+      <dt>Simultâneas</dt><dd>{{ k.max_parallel_requests | numero }}</dd>
+      <dt>Expira em</dt><dd>{{ k.expira_em | datahora if k.expira_em else 'nunca' }}</dd>
+      <dt>Criada em</dt><dd>{{ k.criada_em | datahora }}</dd>
+      <dt>Último uso</dt><dd>{{ k.ultimo_uso | datahora }}</dd>
+      <dt>Identificador</dt><dd class="mono">{{ k.token }}</dd>
+    </dl>
+  </div>
+  <div class="painel">
+    <h2>Consumo de {{ inicio | data }} a {{ fim | data }}</h2>
+    <div class="tabela"><table>
+      <thead><tr><th>Modelo</th><th class="num">Requisições</th><th class="num">Erros</th><th class="num">Tokens prompt</th><th class="num">Tokens resposta</th><th class="num">Total</th></tr></thead>
+      <tbody>
+      {% for r in por_modelo %}
+        <tr><td>{{ r.modelo or '—' }}</td><td class="num">{{ r.requisicoes | numero }}</td><td class="num">{{ r.erros | numero }}</td>
+            <td class="num">{{ r.tok_prompt | numero }}</td><td class="num">{{ r.tok_resposta | numero }}</td><td class="num">{{ r.tok_total | numero }}</td></tr>
+      {% else %}<tr><td colspan="6" class="vazio">Sem uso nos últimos 30 dias.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    <p><a href="/logs?chave={{ k.token }}&desde={{ inicio }}">Ver logs desta chave</a></p>
+  </div>
+</div>
+
+{% if usuario.papel == 'admin' %}
+<h2>Gestão</h2>
+{% if erro_gateway %}<p class="aviso erro">Não foi possível listar os modelos: {{ erro_gateway }}</p>{% endif %}
+<div class="acoes">
+  <details class="acao">
+    <summary>Alterar limites e validade</summary>
+    <form method="post" action="/chaves/{{ k.token }}/alterar">
+      {{ m.csrf() }}
+      <fieldset><legend>Modelos</legend>
+        {% for mod in disponiveis %}
+          <label><input type="checkbox" name="modelos" value="{{ mod }}" {% if mod in (k.modelos or []) %}checked{% endif %}> {{ mod }}</label>
+        {% endfor %}
+      </fieldset>
+      <label>Requisições por minuto <input name="rpm" type="number" min="1" value="{{ k.rpm_limit or '' }}" required></label>
+      <label>Requisições simultâneas <input name="paralelas" type="number" min="1" value="{{ k.max_parallel_requests or '' }}" required></label>
+      <label>Nova validade (a partir de agora)
+        <input name="validade" placeholder="vazio = manter" pattern="[0-9]+(s|m|h|d|w|mo)|never">
+      </label>
+      <button>Salvar alterações</button>
+    </form>
+  </details>
+
+  <details class="acao">
+    <summary>Rotacionar</summary>
+    <form method="post" action="/chaves/{{ k.token }}/rotacionar"
+          data-confirmar="Criar uma nova chave para {{ k.key_alias }} e agendar a revogação desta?">
+      {{ m.csrf() }}
+      <p class="dica">Cria uma chave nova com o mesmo nome e limites. Esta é renomeada e revogada após a carência.</p>
+      <label>Carência (dias, 0 = revogar já) <input name="carencia" type="number" min="0" max="30" value="{{ carencia }}" required></label>
+      <label>Validade da nova chave <input name="validade" value="{{ validade_padrao }}" pattern="[0-9]+(s|m|h|d|w|mo)|never" required></label>
+      <button>Rotacionar</button>
+    </form>
+  </details>
+
+  {% if k.bloqueada %}
+  <form class="painel" method="post" action="/chaves/{{ k.token }}/desbloquear">
+    {{ m.csrf() }}
+    <h2>Desbloquear</h2>
+    <p class="dica">A chave volta a ser aceita pelo gateway.</p>
+    <button>Desbloquear</button>
+  </form>
+  {% else %}
+  <details class="acao">
+    <summary>Bloquear temporariamente</summary>
+    <form method="post" action="/chaves/{{ k.token }}/bloquear">
+      {{ m.csrf() }}
+      <p class="dica">Suspende a chave sem apagá-la. Pode ser desfeito.</p>
+      <label>Motivo <textarea name="motivo" minlength="5" maxlength="500" required></textarea></label>
+      <button>Bloquear</button>
+    </form>
+  </details>
+  {% endif %}
+
+  <details class="acao">
+    <summary>Revogar</summary>
+    <form method="post" action="/chaves/{{ k.token }}/revogar">
+      {{ m.csrf() }}
+      <p class="dica">Definitivo. A chave é apagada do gateway; o retrato fica no histórico.</p>
+      <label>Motivo <textarea name="motivo" minlength="5" maxlength="500" required></textarea></label>
+      <label>Digite <strong>{{ k.key_alias }}</strong> para confirmar <input name="confirmacao" autocomplete="off" required></label>
+      <button class="perigo">Revogar definitivamente</button>
+    </form>
+  </details>
+</div>
+
+<h2>Trilha de auditoria</h2>
+<div class="tabela"><table>
+  <thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Detalhes</th></tr></thead>
+  <tbody>
+  {% for a in trilha %}
+    <tr><td>{{ a.quando | datahora('%d/%m/%Y %H:%M:%S') }}</td><td>{{ a.usuario or '—' }}</td>
+        <td>{{ ACOES.get(a.acao, a.acao) }}</td><td class="mono">{{ a.detalhes | tojson }}</td></tr>
+  {% else %}<tr><td colspan="4" class="vazio">Nenhum evento registrado pelo painel.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endif %}
+{% endblock %}

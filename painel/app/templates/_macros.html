@@ -1,0 +1,18 @@
+{% macro csrf() %}<input type="hidden" name="csrf" value="{{ usuario.csrf }}">{% endmacro %}
+
+{% macro status_chave(s) -%}
+<span class="selo {{ s }}">{{ {'ativa': 'ativa', 'expirando': 'expira em breve', 'expirada': 'expirada', 'bloqueada': 'bloqueada'}[s] }}</span>
+{%- endmacro %}
+
+{% macro periodo(inicio, fim, extra={}) %}
+<form class="filtros" method="get">
+  <label>De <input type="date" name="desde" value="{{ inicio }}"></label>
+  <label>Até <input type="date" name="ate" value="{{ fim }}"></label>
+  {% for k, v in extra.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+  <button>Aplicar</button>
+</form>
+{% endmacro %}
+
+{% macro erros(lista) %}
+{% if lista %}<div class="aviso erro" role="alert"><ul>{% for e in lista %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% endmacro %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block conteudo %}
+<h1>{{ titulo }}: {{ alias }}</h1>
+<div class="aviso atencao">
+  Copie a chave agora. Ela <strong>não será exibida de novo</strong> e não fica gravada em lugar nenhum.
+  Entregue ao consumidor por um canal seguro.
+</div>
+<div class="painel">
+  <div class="segredo">
+    <code id="segredo">{{ segredo }}</code>
+    <button type="button" data-copiar="segredo">Copiar</button>
+  </div>
+</div>
+{% if antiga %}
+<div class="painel">
+  <h2>Chave anterior</h2>
+  <p>Renomeada para <strong>{{ antiga.alias }}</strong>.
+  {% if antiga.revoga_em %}Continua válida até {{ antiga.revoga_em | datahora }}, quando será revogada automaticamente.
+  Combine a troca com o consumidor dentro desse prazo.{% else %}Já foi revogada.{% endif %}</p>
+</div>
+{% endif %}
+<p><a class="botao secundario" href="/chaves/{{ token }}">Ir para a chave</a></p>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titulo %}Auditoria{% endblock %}
+{% block conteudo %}
+<h1>Auditoria</h1>
+<p class="sub">Tudo o que foi feito pelo painel: acessos, gestão de chaves e usuários, leituras de conteúdo e exportações. Os registros não podem ser alterados nem apagados pelo painel.</p>
+<form class="filtros" method="get">
+  <label>De <input type="date" name="desde" value="{{ inicio }}"></label>
+  <label>Até <input type="date" name="ate" value="{{ fim }}"></label>
+  <label>Ação
+    <select name="acao"><option value="">todas</option>
+      {% for k, v in ACOES.items() %}<option value="{{ k }}" {% if k == acao %}selected{% endif %}>{{ v }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Usuário <input name="usuario" value="{{ filtro_usuario or '' }}"></label>
+  <button>Filtrar</button>
+</form>
+<div class="tabela"><table>
+  <thead><tr><th>Quando</th><th>Usuário</th><th>IP</th><th>Ação</th><th>Alvo</th><th>Detalhes</th></tr></thead>
+  <tbody>
+  {% for a in linhas %}
+    <tr>
+      <td>{{ a.quando | datahora('%d/%m/%Y %H:%M:%S') }}</td>
+      <td>{{ a.usuario or '—' }}</td>
+      <td>{{ a.ip or '—' }}</td>
+      <td>{{ ACOES.get(a.acao, a.acao) }}</td>
+      <td>{{ a.alvo or '—' }}</td>
+      <td class="mono">{{ a.detalhes | tojson if a.detalhes else '' }}</td>
+    </tr>
+  {% else %}<tr><td colspan="6" class="vazio">Nenhum evento no período.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% if proxima %}
+<div class="paginacao"><a href="/auditoria?desde={{ inicio }}&ate={{ fim }}&acao={{ acao or '' }}&usuario={{ (filtro_usuario or '') | urlencode }}&antes_id={{ proxima }}">Mais antigos →</a></div>
+{% endif %}
+{% endblock %}

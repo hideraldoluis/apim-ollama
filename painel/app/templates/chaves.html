@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Chaves{% endblock %}
+{% block conteudo %}
+<h1>Chaves</h1>
+<p class="sub">Uma chave por consumidor. O segredo nunca é armazenado: o painel mostra apenas o final da chave.</p>
+<div class="linha-botoes">
+  {% if usuario.papel == 'admin' %}<a class="botao" href="/chaves/nova">Nova chave</a>{% endif %}
+  <a class="botao secundario" href="/chaves/revogadas">Chaves revogadas</a>
+</div>
+<div class="tabela"><table>
+  <thead><tr>
+    <th>Nome</th><th>Criada para</th><th>Final</th><th>Situação</th><th>Modelos</th>
+    <th class="num">RPM</th><th class="num">Simult.</th><th>Expira em</th><th>Último uso</th><th class="num">Tokens (30 dias)</th>
+  </tr></thead>
+  <tbody>
+  {% for k in chaves %}
+    <tr>
+      <td><a href="/chaves/{{ k.token }}">{{ k.key_alias or '(sem nome)' }}</a></td>
+      <td>{{ k.criado_para or '—' }}</td>
+      <td class="mono">{{ k.key_name or '—' }}</td>
+      <td>{{ m.status_chave(k.status) }}</td>
+      <td>{{ (k.modelos or []) | join(', ') or 'todos' }}</td>
+      <td class="num">{{ k.rpm_limit | numero }}</td>
+      <td class="num">{{ k.max_parallel_requests | numero }}</td>
+      <td>{{ k.expira_em | datahora if k.expira_em else 'nunca' }}</td>
+      <td>{{ k.ultimo_uso | datahora }}</td>
+      <td class="num">{{ k.tok_30d | numero }}</td>
+    </tr>
+  {% else %}<tr><td colspan="10" class="vazio">Nenhuma chave cadastrada.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

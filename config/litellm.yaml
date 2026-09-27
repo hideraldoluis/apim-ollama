@@ -1,15 +1,6 @@
-model_list:
-  # model_name é o nome público que os clientes usam; model aponta para o Ollama.
-  - model_name: llama3.2
-    litellm_params:
-      model: ollama_chat/llama3.2
-      api_base: os.environ/OLLAMA_API_BASE
-
-  # Exemplo para embeddings (baixe antes: scripts/pull-model.sh nomic-embed-text):
-  # - model_name: nomic-embed-text
-  #   litellm_params:
-  #     model: ollama/nomic-embed-text
-  #     api_base: os.environ/OLLAMA_API_BASE
+# Nenhum modelo fixo: todos são publicados pelo painel (tela Modelos) e gravados no banco
+# (STORE_MODEL_IN_DB=True). Numa instalação nova, a API começa sem modelos disponíveis.
+model_list: []
 
 litellm_settings:
   # Primeira requisição após inatividade inclui o tempo de carga do modelo.
@@ -25,5 +16,9 @@ general_settings:
   max_response_size_mb: 20
   # Grava prompt e resposta de cada requisição na tabela LiteLLM_SpendLogs, junto com a chave (hash) e o alias.
   store_prompts_in_spend_logs: true
+  # Retenção dos logs (inclui prompts e respostas): apaga registros com mais de 180 dias, verificando 1x por dia.
+  # Os totais diários de consumo ficam no schema "painel" e não são apagados.
+  maximum_spend_logs_retention_period: "180d"
+  maximum_spend_logs_retention_interval: "1d"
   # Teto global de requisições simultâneas, alinhado a OLLAMA_NUM_PARALLEL. Excedentes recebem 429.
   global_max_parallel_requests: 8

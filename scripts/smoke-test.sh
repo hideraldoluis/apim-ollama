@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Teste de aceitação da borda. Uso: scripts/smoke-test.sh <base_url> <api_key> [modelo]
-#   ex.: scripts/smoke-test.sh https://localhost sk-abc llama3.2
+# Teste de aceitação da borda. Uso: scripts/smoke-test.sh <base_url> <api_key> <modelo>
+#   ex.: scripts/smoke-test.sh https://localhost sk-abc qwen2.5:7b
+#   <modelo> é o nome público de um modelo publicado no gateway e liberado na chave.
 # Usa -k (ignora validação do certificado) apenas se INSECURE=1 (CA interna ainda não instalada).
 set -uo pipefail
 
 BASE="${1:?uso: smoke-test.sh <base_url> <api_key> [modelo]}"
 KEY="${2:?informe a api_key}"
-MODEL="${3:-llama3.2}"
+MODEL="${3:?informe o modelo (nome público publicado no gateway)}"
 CURL_OPTS=(-sS -o /dev/null -w '%{http_code}' --max-time 300)
 [[ "${INSECURE:-0}" == "1" ]] && CURL_OPTS+=(-k)
 

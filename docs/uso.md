@@ -12,6 +12,8 @@ A API é compatível com OpenAI. Rotas disponíveis:
 | POST | `/v1/embeddings` | Embeddings (se houver modelo de embeddings liberado) |
 | GET | `/health/liveliness` | Verificação de disponibilidade (sem chave) |
 
+Em `"model"`, use o nome público de um modelo liberado na sua chave. A lista está em `GET /v1/models` (abaixo) ou com o administrador do gateway.
+
 ## curl
 
 ```bash
@@ -22,12 +24,12 @@ curl $BASE/v1/models -H "Authorization: Bearer $KEY"
 
 curl $BASE/v1/chat/completions \
   -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-  -d '{"model":"llama3.2","messages":[{"role":"user","content":"Olá!"}]}'
+  -d '{"model":"<modelo>","messages":[{"role":"user","content":"Olá!"}]}'
 
 # Streaming (SSE): use -N para não bufferizar
 curl -N $BASE/v1/chat/completions \
   -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-  -d '{"model":"llama3.2","stream":true,"messages":[{"role":"user","content":"Conte até 5"}]}'
+  -d '{"model":"<modelo>","stream":true,"messages":[{"role":"user","content":"Conte até 5"}]}'
 ```
 
 ## SDK OpenAI
@@ -37,7 +39,7 @@ from openai import OpenAI
 
 client = OpenAI(base_url="https://gn100.empresa.local/v1", api_key="sk-...")
 resp = client.chat.completions.create(
-    model="llama3.2",
+    model="<modelo>",
     messages=[{"role": "user", "content": "Olá!"}],
 )
 print(resp.choices[0].message.content)

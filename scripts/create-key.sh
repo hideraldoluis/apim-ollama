@@ -2,20 +2,20 @@
 # Cria uma chave virtual para um consumidor.
 # Uso: scripts/create-key.sh <alias> [modelos] [rpm] [paralelas] [validade]
 #   alias      nome do consumidor (ex.: time-dados)
-#   modelos    lista separada por vírgula
+#   modelos    lista separada por vírgula; precisam estar publicados no gateway (painel → Modelos)
 #   rpm        requisições por minuto
 #   paralelas  requisições simultâneas
 #   validade   30d, 12h, 6mo... ou "never" para não expirar
 #
 # Cada parâmetro omitido (ou passado como "") usa o padrão do .env; se também ausente, o valor embutido:
-#   modelos   KEY_DEFAULT_MODELS    (llama3.2)
+#   modelos   KEY_DEFAULT_MODELS    (sem padrão: obrigatório)
 #   rpm       KEY_DEFAULT_RPM       (30)
 #   paralelas KEY_DEFAULT_PARALLEL  (2)
 #   validade  KEY_DEFAULT_DURATION  (90d)
 source "$(dirname "$0")/_common.sh"
 
 ALIAS="${1:?uso: create-key.sh <alias> [modelos] [rpm] [paralelas] [validade]}"
-MODELS="${2:-$(env_value KEY_DEFAULT_MODELS)}";     MODELS="${MODELS:-llama3.2}"
+MODELS="${2:-$(env_value KEY_DEFAULT_MODELS)}"
 RPM="${3:-$(env_value KEY_DEFAULT_RPM)}";           RPM="${RPM:-30}"
 PARALLEL="${4:-$(env_value KEY_DEFAULT_PARALLEL)}"; PARALLEL="${PARALLEL:-2}"
 DURATION="${5:-$(env_value KEY_DEFAULT_DURATION)}"; DURATION="${DURATION:-90d}"
@@ -28,6 +28,22 @@ validate_int rpm "$RPM"
 validate_int paralelas "$PARALLEL"
 validate_duration "$DURATION"
 load_master_key
+
+# Lista vazia no LiteLLM libera TODOS os modelos: aqui ela é proibida.
+if [[ -z "$MODELS" ]]; then
+  echo "Informe os modelos da chave (2º argumento) ou defina KEY_DEFAULT_MODELS no .env." >&2
+  exit 1
+fi
+# Só aceita modelos publicados no gateway.
+PUBLICADOS="$(admin_get /v1/models | { grep -oE '"id": ?"[^"]+"' || true; } | sed -E 's/.*"([^"]+)"$/\1/')"
+IFS=',' read -ra LISTA <<< "$MODELS"
+for m in "${LISTA[@]}"; do
+  if ! grep -qxF "$m" <<< "$PUBLICADOS"; then
+    echo "Modelo '$m' não está publicado no gateway. Publique-o pelo painel (tela Modelos)." >&2
+    echo "Publicados: $(tr '\n' ',' <<< "$PUBLICADOS" | sed 's/,*$//; s/^$/nenhum/')" >&2
+    exit 1
+  fi
+done
 
 # Converte "a,b" em ["a","b"]
 MODELS_JSON="[\"${MODELS//,/\",\"}\"]"

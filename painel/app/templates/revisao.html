@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Revisão de acessos{% endblock %}
+{% block conteudo %}
+<h1>Revisão de acessos</h1>
+<p class="sub">Confira trimestralmente quem tem acesso e com qual papel. Contas sem login há {{ inatividade }} dias são desativadas automaticamente.</p>
+{% if revisoes %}
+<p>Última revisão: {{ revisoes[0].quando | datahora }} por {{ revisoes[0].revisor }}.</p>
+{% else %}
+<p class="aviso atencao">Nenhuma revisão registrada ainda.</p>
+{% endif %}
+
+<div class="tabela"><table>
+  <thead><tr><th>Login</th><th>Nome</th><th>Papel</th><th>Situação</th><th>Criado</th><th>Último login</th><th class="num">Dias sem login</th></tr></thead>
+  <tbody>
+  {% for x in usuarios %}
+    <tr>
+      <td>{{ x.login }}</td><td>{{ x.nome }}</td><td>{{ x.papel }}</td>
+      <td>{% if x.ativo %}<span class="selo ativo">ativo</span>{% else %}<span class="selo desativado">desativado</span>{% endif %}</td>
+      <td>{{ x.criado_em | datahora('%d/%m/%Y') }} por {{ x.criado_por }}</td>
+      <td>{{ x.ultimo_login | datahora }}</td>
+      <td class="num">{% if x.ativo and x.dias_sem_login is not none and x.dias_sem_login >= 60 %}<span class="selo expirando">{{ x.dias_sem_login }}</span>{% else %}{{ x.dias_sem_login if x.ativo else '—' }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<form class="formulario painel" method="post" action="/usuarios/revisao">
+  {{ m.csrf() }}
+  <label>Resultado da revisão
+    <textarea name="observacao" minlength="5" maxlength="500" required placeholder="Ex.: acessos conferidos com a gestão de TI; nenhum ajuste necessário."></textarea>
+  </label>
+  <div><button>Registrar revisão</button></div>
+</form>
+
+{% if revisoes %}
+<h2>Revisões anteriores</h2>
+<div class="tabela"><table>
+  <thead><tr><th>Quando</th><th>Revisor</th><th>Resultado</th></tr></thead>
+  <tbody>{% for r in revisoes %}<tr><td>{{ r.quando | datahora }}</td><td>{{ r.revisor }}</td><td>{{ r.observacao }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+{% endblock %}

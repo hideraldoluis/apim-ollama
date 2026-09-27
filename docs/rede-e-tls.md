@@ -5,6 +5,8 @@
 | Porta | Serviço | Exposição |
 |---|---|---|
 | 443 / 80 | Caddy | LAN/VPN interna (a 80 só redireciona para HTTPS) |
+| 8443 | Caddy → painel | **Somente a rede de gestão** (`PAINEL_CIDR` no Caddy + firewall) |
+| 8080 | Painel | **Somente `127.0.0.1` do host** (acesso de emergência por túnel SSH) |
 | 4000 | LiteLLM | **Somente `127.0.0.1` do host** (administração) |
 | 11434 | Ollama | Não publicada; só na rede interna do compose |
 | 5432 | Postgres | Não publicada |
@@ -18,10 +20,11 @@ sudo ufw default deny incoming
 sudo ufw allow from 10.0.0.0/8 to any port 22 proto tcp     # SSH de administração
 sudo ufw allow from 10.0.0.0/8 to any port 443 proto tcp
 sudo ufw allow from 10.0.0.0/8 to any port 80 proto tcp
+sudo ufw allow from 10.10.5.0/24 to any port 8443 proto tcp  # painel: só a rede de gestão (mesmo valor de PAINEL_CIDR)
 sudo ufw enable
 ```
 
-> O Docker manipula o iptables diretamente e pode **ignorar regras do ufw** para portas publicadas. Valide de fora da máquina (`nmap`/`curl` de outro host) e, se necessário, aplique as regras na cadeia `DOCKER-USER`. Como só 80/443 estão publicados externamente, o risco já é pequeno.
+> O Docker manipula o iptables diretamente e pode **ignorar regras do ufw** para portas publicadas. Valide de fora da máquina (`nmap`/`curl` de outro host) e, se necessário, aplique as regras na cadeia `DOCKER-USER`. Como só 80/443/8443 estão publicados externamente, e o Caddy recusa na 8443 quem estiver fora de `PAINEL_CIDR`, o risco já é pequeno. Exemplo para a 8443 na `DOCKER-USER` (fora do CIDR de gestão, descarta): `sudo iptables -I DOCKER-USER -p tcp --dport 8443 ! -s 10.10.5.0/24 -j DROP`.
 
 ## DNS
 

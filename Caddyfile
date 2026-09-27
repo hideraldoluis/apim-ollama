@@ -1,6 +1,15 @@
 {
 	# Ajuste a CA/certificado em docs/rede-e-tls.md quando houver certificado corporativo.
 	admin off
+
+	# Quem abrir http://...:8443 é redirecionado para https na mesma porta
+	# (sem isto, o Caddy responde "Client sent an HTTP request to an HTTPS server").
+	servers :8443 {
+		listener_wrappers {
+			http_redirect
+			tls
+		}
+	}
 }
 
 {$SITE_ADDRESS:localhost} {
@@ -28,6 +37,35 @@
 	# Tudo o mais (admin, UI, /key/*, /model/*, /metrics...) não é exposto na borda.
 	handle {
 		respond "Not found" 404
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+# Painel de governança: porta própria, só para a rede de gestão (PAINEL_CIDR, separados por espaço).
+# Também restrinja a 8443 no firewall do host (docs/rede-e-tls.md).
+{$SITE_ADDRESS:localhost}:8443 {
+	tls internal
+
+	request_body {
+		max_size 1MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	@gestao remote_ip {$PAINEL_CIDR}
+	handle @gestao {
+		reverse_proxy painel:8080
+	}
+
+	handle {
+		respond "Forbidden" 403
 	}
 
 	log {
