@@ -17,7 +17,7 @@ Emergência (no host)        ──túnel SSH────► 127.0.0.1:8080     
 | Logs sem texto (filtros, CSV de metadados) | ✅ | ✅ |
 | Modelos: instalados, publicados, memória, uso e chaves que os liberam | ✅ | ✅ |
 | Chat: conversar com um modelo publicado (via master key, fora dos limites de uma chave) | ✅ | ✅ |
-| Baixar, publicar, retirar, remover, carregar e descarregar modelos | ❌ | ✅ |
+| Baixar, publicar, retirar, remover, carregar e descarregar modelos (inclui **Aquecer** no chat) | ❌ | ✅ |
 | Texto de prompts e respostas (por requisição ou exportação com justificativa) | ❌ | ✅ auditado |
 | Criar, alterar, bloquear, rotacionar e revogar chaves | ❌ | ✅ |
 | Usuários, revisão de acessos, auditoria, retenção | ❌ | ✅ |
@@ -126,6 +126,18 @@ testar respostas e desempenho sem precisar de uma chave `sk-...`.
 - A conversa não é guardada pelo painel: some ao recarregar a página ou trocar de tela.
 - Cada mensagem, no entanto, é uma chamada real ao gateway: aparece no consumo do modelo e, para admins,
   no texto dos logs, como qualquer outra requisição.
+
+O que a tela mostra:
+- **Estado do modelo:** `carregado` ou `fora da memória`, além de parâmetros, quantização e contexto. Fora da
+  memória, a primeira resposta inclui a carga do modelo, que leva minutos em modelos grandes (ex.: llama3.3 70B).
+  Durante a espera, a bolha mostra a fase e um cronômetro. O botão **Aquecer** (só admin, auditado como
+  "Modelo carregado na memória") carrega o modelo antes do teste.
+- **Métricas por resposta:** tempo até o 1º token, tokens/s, tokens gerados, tempo total e se a resposta
+  incluiu a carga do modelo ou foi cortada pelo limite de tokens.
+- **Parâmetros:** prompt de sistema, temperatura (0–2), máximo de tokens e seed. Vazio usa o padrão do modelo.
+- **Erros sempre visíveis:** recusa do gateway, erro no meio da resposta, resposta vazia e timeout (600 s,
+  o mesmo do LiteLLM) aparecem na bolha, com **Tentar de novo**. **Parar** interrompe a geração no Ollama.
+- **Copiar conversa:** copia a conversa em Markdown, com parâmetros e métricas, para anexar a uma avaliação.
 
 ## Logs, consumo e retenção
 

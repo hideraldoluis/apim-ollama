@@ -2,28 +2,73 @@
 {% block titulo %}Chat{% endblock %}
 {% block conteudo %}
 <h1>Chat</h1>
-<p class="sub">Converse diretamente com um modelo publicado no gateway, para testar respostas e desempenho.
-  A conversa não fica salva: some ao recarregar a página. A requisição passa pelo gateway como qualquer
-  outra chamada (aparece no consumo e, para admins, nos logs), mas fora dos limites de uma chave sk-.</p>
+<p class="sub">Converse com um modelo publicado no gateway para testar respostas e desempenho. A conversa não fica
+  salva: some ao recarregar a página. Cada mensagem é uma chamada real ao gateway (aparece no consumo e, para
+  admins, nos logs), mas fora dos limites de uma chave sk-.</p>
 
-{% if not modelos %}
+{% if erro %}
+<p class="aviso erro">{{ erro }}</p>
+{% elif not modelos %}
 <p class="aviso erro">Nenhum modelo de chat publicado no gateway. Publique um em <a href="/modelos">Modelos</a>.</p>
 {% else %}
-<div class="chat" data-chat>
+<div class="chat" data-chat data-admin="{{ '1' if usuario.papel == 'admin' else '' }}">
   <form id="chat-form" class="chat-form">
     <input type="hidden" name="csrf" value="{{ usuario.csrf }}">
     <div class="chat-topo">
       <label>Modelo
         <select name="modelo" required>
-          {% for nome in modelos %}<option value="{{ nome }}">{{ nome }}</option>{% endfor %}
+          {% for m in modelos %}
+          <option value="{{ m.nome }}" data-carregado="{{ '1' if m.carregado else '' }}"
+                  data-parametros="{{ m.parametros or '' }}" data-quantizacao="{{ m.quantizacao or '' }}"
+                  data-contexto="{{ m.contexto or '' }}">{{ m.nome }}</option>
+          {% endfor %}
         </select>
       </label>
-      <button type="button" class="secundario" data-limpar>Limpar conversa</button>
+      <div class="chat-modelo" data-info>
+        <span class="selo" data-estado></span>
+        <span class="dica" data-detalhes></span>
+        {% if usuario.papel == 'admin' %}<button type="button" class="secundario pequeno" data-aquecer>Aquecer</button>{% endif %}
+      </div>
+      <div class="chat-botoes">
+        <button type="button" class="secundario" data-exportar>Copiar conversa</button>
+        <button type="button" class="secundario" data-limpar>Limpar</button>
+      </div>
     </div>
-    <div class="chat-historico" data-historico></div>
+
+    <details class="chat-parametros">
+      <summary>Parâmetros <span class="dica" data-resumo-parametros></span></summary>
+      <div class="chat-parametros-campos">
+        <label class="largo">Prompt de sistema
+          <textarea name="sistema" rows="2" maxlength="8000" placeholder="Opcional. Ex.: Responda sempre em português, de forma objetiva."></textarea>
+        </label>
+        <label>Temperatura
+          <input name="temperatura" type="number" min="0" max="2" step="0.1" placeholder="padrão">
+        </label>
+        <label>Máx. de tokens
+          <input name="max_tokens" type="number" min="1" max="32768" step="1" placeholder="padrão">
+        </label>
+        <label>Seed
+          <input name="seed" type="number" min="1" step="1" placeholder="aleatória">
+        </label>
+      </div>
+    </details>
+
+    <div class="chat-historico" data-historico aria-live="polite">
+      <div class="chat-vazio" data-vazio>
+        <p>Escolha o modelo e envie uma mensagem. Sugestões de teste:</p>
+        <div class="chat-sugestoes">
+          <button type="button" class="secundario" data-sugestao="Explique em três parágrafos curtos o que é um API gateway e por que usá-lo na frente de um servidor de modelos de IA.">Explicação em português</button>
+          <button type="button" class="secundario" data-sugestao="Escreva uma função em Python que valide um CPF, com testes usando pytest.">Código</button>
+          <button type="button" class="secundario" data-sugestao="Um trem sai às 14h40 a 80 km/h e outro sai do mesmo ponto às 15h10 a 100 km/h, no mesmo sentido. A que horas o segundo alcança o primeiro? Mostre o raciocínio.">Raciocínio</button>
+          <button type="button" class="secundario" data-sugestao="Resuma em 5 tópicos: o painel de governança permite criar chaves de API com limites por consumidor, publicar modelos do Ollama no gateway, acompanhar consumo por chave e modelo, ver logs com texto apenas para administradores, auditar ações e aplicar retenção de 180 dias.">Resumo</button>
+        </div>
+      </div>
+    </div>
+
     <div class="chat-entrada">
-      <textarea name="mensagem" placeholder="Escreva uma mensagem... (Enter envia, Shift+Enter quebra linha)" required></textarea>
-      <button type="submit">Enviar</button>
+      <textarea name="mensagem" rows="1" placeholder="Escreva uma mensagem... (Enter envia, Shift+Enter quebra linha)"></textarea>
+      <button type="submit" data-enviar>Enviar</button>
+      <button type="button" class="perigo" data-parar hidden>Parar</button>
     </div>
   </form>
 </div>

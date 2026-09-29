@@ -5,6 +5,7 @@ Pré-requisitos: os mesmos de e2e.py (admin.teste recém-criado, PAINEL_COOKIE_S
 LITELLM_MASTER_KEY em MASTER_KEY.
   python painel/tests/e2e_modelos.py <senha-temporária-do-admin.teste>
 """
+import json
 import os
 import re
 import sys
@@ -104,6 +105,29 @@ ok(flash(c, r)[0] == "ok", "descarregar")
 r = c.post("/modelos/carregar", data={"csrf": t, "modelo": f"{CHAT}"})
 ok(flash(c, r)[0] == "ok", "carregar")
 
+# Chat do painel (master key; o stream do gateway é traduzido em eventos próprios)
+def chat_eventos(cliente, token_csrf, **extra):
+    campos = {"csrf": token_csrf, "modelo": "mini-chat", "max_tokens": "8",
+              "mensagens": json.dumps([{"role": "user", "content": "Say hi"}]), **extra}
+    r = cliente.post("/chat/enviar", data=campos, timeout=300)
+    if r.headers.get("content-type", "").startswith("application/json"):
+        return r.status_code, r.json()
+    return r.status_code, [json.loads(b[5:]) for b in r.text.split("\n\n") if b.startswith("data:")]
+
+
+st, ev = chat_eventos(c, t)
+tipos = [e["tipo"] for e in ev]
+ok(st == 200 and "delta" in tipos and "erro" not in tipos and tipos[-1] == "fim", f"chat do painel responde em streaming ({tipos[:6]})")
+met = next((e for e in ev if e["tipo"] == "metricas"), {})
+ok((met.get("tokens_saida") or 0) > 0 and "ttft_ms" in met and met["frio"] is False, f"chat mede tokens e TTFT ({met})")
+st, ev = chat_eventos(c, t, temperatura="5")
+ok(st == 400 and "Temperatura" in ev.get("erro", ""), "chat recusa parâmetro inválido")
+st, ev = chat_eventos(c, t, modelo="mini-emb")
+ok(st == 400, "chat não oferece modelo de embedding")
+ok(c.get("/chat/estado.json").json().get("mini-chat") is True, "estado do chat mostra o modelo carregado")
+r = c.post("/chat/aquecer", data={"csrf": t, "modelo": "mini-chat"}, timeout=600)
+ok(r.status_code == 200 and r.json().get("ok"), "aquecer pelo chat")
+
 # Proteções
 publicados = {m["model_name"]: m["model_info"]["id"] for m in httpx.get(
     f"{LITELLM}/model/info", headers={"Authorization": f"Bearer {MASTER}"}).json()["data"]}
@@ -135,7 +159,8 @@ pag = l.get("/modelos")
 ok(pag.status_code == 200 and "Publicar" not in pag.text and "Baixar" not in pag.text, "leitor vê modelos sem ações")
 lt = csrf(l.get("/").text)
 for rota, dados in [("/modelos/baixar", {"modelo": "x"}), ("/modelos/publicar", {"modelo": "x", "nome_publico": "x"}),
-                    ("/modelos/remover", {"modelo": "x"}), ("/modelos/carregar", {"modelo": "x"})]:
+                    ("/modelos/remover", {"modelo": "x"}), ("/modelos/carregar", {"modelo": "x"}),
+                    ("/chat/aquecer", {"modelo": "x"})]:
     ok(l.post(rota, data={"csrf": lt, **dados}).status_code == 403, f"leitor bloqueado em {rota}")
 
 aud = c.get("/auditoria").text

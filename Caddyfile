@@ -61,7 +61,10 @@
 
 	@gestao remote_ip {$PAINEL_CIDR}
 	handle @gestao {
-		reverse_proxy painel:8080
+		reverse_proxy painel:8080 {
+			# Chat do painel: respostas em streaming (SSE) sem buffer.
+			flush_interval -1
+		}
 	}
 
 	handle {
