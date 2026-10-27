@@ -2,6 +2,10 @@
 	# Ajuste a CA/certificado em docs/rede-e-tls.md quando houver certificado corporativo.
 	admin off
 
+	# Certificado usado quando o cliente não envia SNI, o que acontece ao acessar por IP
+	# (https://172.16.10.4). Dentro do container o Caddy não sabe o IP do host para escolher sozinho.
+	default_sni {$SITE_ADDRESS:localhost}
+
 	# Quem abrir http://...:8443 é redirecionado para https na mesma porta
 	# (sem isto, o Caddy responde "Client sent an HTTP request to an HTTPS server").
 	servers :8443 {
