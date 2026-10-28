@@ -2,6 +2,7 @@
 
   docker compose run --rm painel python -m app.cli criar-admin <login> "<Nome>"
   docker compose run --rm painel python -m app.cli recuperar <login>
+  docker compose run --rm painel python -m app.cli modelo-chaves <liberar|retirar> <modelo> (--todas | --chave ALIAS ...) [--sim]
 
 Ambas geram senha temporária (troca obrigatória no primeiro login) e ficam na auditoria como "cli".
 """
@@ -10,7 +11,7 @@ import sys
 
 from psycopg.errors import UniqueViolation
 
-from . import auditoria, db, senhas, validacao
+from . import auditoria, consultas, db, litellm, modelos_chaves, senhas, validacao
 from .config import config
 
 
@@ -54,6 +55,36 @@ def recuperar(login: str) -> None:
     _imprimir(login, temporaria)
 
 
+def modelo_chaves(acao: str, modelo: str, todas: bool, aliases: list[str], confirmar: bool) -> None:
+    """Libera ou retira um modelo em várias chaves. Sem --sim só mostra o que seria feito."""
+    modelo = validacao.modelo_publico(modelo)
+    if modelo not in litellm.modelos_publicados():
+        raise validacao.Invalido(f"{modelo} não está publicado no gateway.")
+    chaves = consultas.chaves()
+    alvos = {k["token"] for k in modelos_chaves.elegiveis(chaves) if todas or k["key_alias"] in aliases}
+    desconhecidas = set(aliases) - {k["key_alias"] for k in chaves}
+    if desconhecidas:
+        raise validacao.Invalido(f"Chaves inexistentes: {', '.join(sorted(desconhecidas))}.")
+    # A seleção final parte do estado atual: liberar acrescenta os alvos, retirar os tira.
+    atuais = {k["token"] for k in modelos_chaves.elegiveis(chaves) if modelo in k["modelos_reais"]}
+    marcadas = (atuais | alvos) if acao == "liberar" else (atuais - alvos)
+    plano = modelos_chaves.planejar(modelo, chaves, marcadas)
+    for rotulo, itens in (("liberar em", plano.adicionar), ("retirar de", plano.retirar),
+                          ("mantida (ficaria sem modelo)", plano.bloqueadas)):
+        for i in itens:
+            print(f"{rotulo}: {i['chave']['key_alias']}")
+    if not plano.alteracoes:
+        print("Nada a fazer.")
+        return
+    if not confirmar:
+        print("Simulação. Repita com --sim para aplicar.")
+        return
+    res = modelos_chaves.executar(plano, "cli", None, "cli")
+    print(modelos_chaves.resumo(plano, res))
+    if res.falhas:
+        sys.exit(1)
+
+
 def _imprimir(login: str, temporaria: str) -> None:
     print(f"Usuário: {login}")
     print(f"Senha temporária: {temporaria}")
@@ -68,15 +99,25 @@ def main() -> None:
     c.add_argument("nome")
     r = sub.add_parser("recuperar", help="reativa, desbloqueia e gera senha temporária")
     r.add_argument("login")
+    m = sub.add_parser("modelo-chaves", help="libera ou retira um modelo em várias chaves")
+    m.add_argument("acao", choices=("liberar", "retirar"))
+    m.add_argument("modelo")
+    m.add_argument("--todas", action="store_true", help="todas as chaves não expiradas com lista de modelos")
+    m.add_argument("--chave", action="append", default=[], metavar="ALIAS", help="alias da chave (repetível)")
+    m.add_argument("--sim", action="store_true", help="aplica (sem isto, apenas simula)")
     args = p.parse_args()
+    if args.comando == "modelo-chaves" and not (args.todas or args.chave):
+        p.error("modelo-chaves exige --todas ou ao menos um --chave")
 
     db.abrir()
     try:
         if args.comando == "criar-admin":
             criar_admin(args.login, args.nome)
+        elif args.comando == "modelo-chaves":
+            modelo_chaves(args.acao, args.modelo, args.todas, args.chave, args.sim)
         else:
             recuperar(args.login)
-    except validacao.Invalido as e:
+    except (validacao.Invalido, litellm.ErroLiteLLM) as e:
         sys.exit(str(e))
     finally:
         db.fechar()

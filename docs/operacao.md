@@ -49,7 +49,7 @@ scripts/pull-model.sh <modelo>                # baixa (ex.: qwen2.5:7b); publiqu
 docker compose exec ollama ollama list        # o que está instalado
 ```
 
-Depois de publicar, libere o modelo nas chaves que devem usá-lo (as chaves têm allowlist de modelos; veja abaixo). Modelos grandes só devem ser adicionados após medir memória e tokens/s; ajuste `OLLAMA_NUM_PARALLEL` e `OLLAMA_MAX_LOADED_MODELS` de acordo, e o `global_max_parallel_requests` em `config/litellm.yaml`.
+Depois de publicar, libere o modelo nas chaves que devem usá-lo (as chaves têm allowlist de modelos; veja abaixo). Para várias chaves de uma vez use a tela **Chaves do modelo** do painel, ou `python -m app.cli modelo-chaves` ([painel.md](painel.md#liberar-ou-retirar-um-modelo-em-várias-chaves)). Chaves expiradas perdem os modelos automaticamente. Modelos grandes só devem ser adicionados após medir memória e tokens/s; ajuste `OLLAMA_NUM_PARALLEL` e `OLLAMA_MAX_LOADED_MODELS` de acordo, e o `global_max_parallel_requests` em `config/litellm.yaml`.
 
 ## Chaves de consumidores
 

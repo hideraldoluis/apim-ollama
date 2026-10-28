@@ -2,6 +2,7 @@
 
 - consolida o consumo diário (antes que a retenção de 180 dias apague os logs);
 - executa revogações agendadas pela rotação de chaves;
+- tira os modelos das chaves expiradas (ficam sem acesso mesmo que a validade seja estendida depois);
 - desativa usuários sem login há PAINEL_INATIVIDADE_DIAS (nunca o último admin ativo);
 - remove sessões expiradas.
 """
@@ -11,9 +12,10 @@ from datetime import timedelta
 
 from psycopg.types.json import Jsonb
 
-from . import auditoria, db, litellm
+from . import auditoria, consultas, db, litellm
 from .config import config
 from .consultas import hoje
+from .validacao import SEM_ACESSO
 
 log = logging.getLogger("painel.rotinas")
 _parar = threading.Event()
@@ -60,6 +62,24 @@ def executar_revogacoes() -> None:
             auditoria.registrar("chave_revogacao_agendada_falhou", "sistema", None, r["key_alias"], {"erro": str(e)})
             continue
         db.executar("update painel.revogacoes_agendadas set executada_em = now() where token = %s", (r["token"],))
+
+
+def limpar_modelos_expirados(por: str = "sistema", ip: str | None = None) -> tuple[int, list[str]]:
+    """Troca os modelos das chaves expiradas por SEM_ACESSO. Devolve (alteradas, falhas); é idempotente."""
+    alteradas, falhas = 0, []
+    for k in consultas.chaves():
+        if k["status"] != "expirada" or not k["modelos_reais"]:
+            continue
+        try:
+            litellm.alterar_chave(k["token"], modelos=[SEM_ACESSO])
+        except litellm.ErroLiteLLM as e:
+            log.warning("Limpeza de modelos de %s falhou: %s", k["key_alias"], e)
+            falhas.append(k["key_alias"] or k["token"][:12])
+            continue
+        alteradas += 1
+        auditoria.registrar("chave_modelos_removidos", por, ip, k["key_alias"], {
+            "token": k["token"], "origem": "expiracao", "modelos": k["modelos_reais"]})
+    return alteradas, falhas
 
 
 def revogar_com_historico(token: str, por: str, ip: str | None, motivo: str) -> bool:
@@ -115,7 +135,7 @@ def limpar_sessoes() -> None:
 
 
 def rodar_uma_vez() -> None:
-    for tarefa in (consolidar_consumo, executar_revogacoes, desativar_inativos, limpar_sessoes):
+    for tarefa in (consolidar_consumo, executar_revogacoes, limpar_modelos_expirados, desativar_inativos, limpar_sessoes):
         try:
             tarefa()
         except Exception:

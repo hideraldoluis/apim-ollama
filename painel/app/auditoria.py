@@ -35,6 +35,8 @@ ACOES = {
     "chave_desbloqueada": "Chave desbloqueada",
     "chave_revogada": "Chave revogada",
     "chave_rotacionada": "Chave rotacionada",
+    "chave_modelos_removidos": "Modelos removidos de chave expirada",
+    "modelo_chaves_ajustadas": "Modelo liberado/retirado em várias chaves",
     "chave_revogacao_agendada_falhou": "Falha na revogação agendada",
     "modelo_download_iniciado": "Download de modelo iniciado",
     "modelo_download_concluido": "Download de modelo concluído",

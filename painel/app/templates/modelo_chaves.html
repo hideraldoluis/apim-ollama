@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Chaves do modelo {{ modelo }}{% endblock %}
+{% block conteudo %}
+<h1>Chaves do modelo <span class="mono">{{ modelo }}</span></h1>
+<p class="sub">Marque as chaves que devem ter este modelo e desmarque as que não devem. Nada é gravado até você confirmar na tela seguinte.</p>
+<p><a href="/modelos">← Modelos</a></p>
+
+{% if todos %}<p class="dica">{{ todos | length }} chave(s) sem lista de modelos (acesso a todos) não aparecem aqui: {{ todos | map(attribute='key_alias') | map('string') | join(', ') }}.</p>{% endif %}
+{% if expiradas %}<p class="dica">{{ expiradas }} chave(s) expirada(s) não aparecem: elas ficam sem modelos automaticamente.</p>{% endif %}
+
+<form method="post" action="/modelos/{{ modelo }}/chaves/revisar" data-selecao>
+  {{ m.csrf() }}
+  <div class="linha-botoes">
+    <label>Filtrar <input type="search" data-filtro placeholder="nome ou criada para" size="28"></label>
+    <button type="button" class="secundario" data-marcar="visiveis">Marcar as visíveis</button>
+    <button type="button" class="secundario" data-marcar="todas">Liberar em todas</button>
+    <button type="button" class="secundario" data-marcar="nenhuma">Retirar de todas</button>
+    <button type="button" class="secundario" data-marcar="original">Desfazer</button>
+    <strong data-contador>+0 / −0</strong>
+  </div>
+  <div class="tabela"><table>
+    <thead><tr><th></th><th>Nome</th><th>Criada para</th><th>Situação</th><th>Modelos atuais</th></tr></thead>
+    <tbody>
+    {% for k in chaves %}
+      {% set tem = modelo in k.modelos_reais %}
+      <tr data-linha data-busca="{{ ((k.key_alias or '') ~ ' ' ~ (k.criado_para or '')) | lower }}">
+        <td><input type="checkbox" name="chave" value="{{ k.token }}" data-tinha="{{ 1 if tem else 0 }}" {% if tem %}checked{% endif %}
+                   aria-label="{{ modelo }} em {{ k.key_alias }}"></td>
+        <td><a href="/chaves/{{ k.token }}">{{ k.key_alias or '(sem nome)' }}</a></td>
+        <td>{{ k.criado_para or '—' }}</td>
+        <td>{{ m.status_chave(k.status) }}</td>
+        <td>{{ k.modelos_reais | join(', ') or 'sem modelos' }}</td>
+      </tr>
+    {% else %}<tr><td colspan="5" class="vazio">Nenhuma chave elegível.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <div><button>Revisar alterações</button></div>
+</form>
+{% endblock %}

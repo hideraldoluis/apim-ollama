@@ -31,7 +31,8 @@ e ainda ser liberado em cada chave. Uso de {{ inicio | data }} a {{ fim | data }
         {% elif p.carregado %}<span class="selo ativa">na memória</span>
         {% else %}<span class="selo neutro">em disco</span>{% endif %}
       </td>
-      <td>{% if p.chaves %}<span title="{{ p.chaves | map(attribute='key_alias') | join(', ') }}">{{ p.chaves | length }}</span>{% else %}0{% endif %}</td>
+      <td>{% if p.chaves %}<span title="{{ p.chaves | map(attribute='key_alias') | join(', ') }}">{{ p.chaves | length }}</span>{% else %}0{% endif %}
+        {% if usuario.papel == 'admin' %}<a href="/modelos/{{ p.nome }}/chaves">gerenciar</a>{% endif %}</td>
       <td class="num">{{ p.uso.requisicoes | numero if p.uso else 0 }}</td>
       <td class="num">{{ p.uso.tok_total | numero if p.uso else 0 }}</td>
       {% if usuario.papel == 'admin' %}
@@ -41,9 +42,14 @@ e ainda ser liberado em cada chave. Uso de {{ inicio | data }} a {{ fim | data }
           <form method="post" action="/modelos/despublicar">
             {{ m.csrf() }}
             <input type="hidden" name="model_id" value="{{ p.id }}">
-            {% if p.chaves %}<p class="dica">Liberado em {{ p.chaves | length }} chave(s): retire-o delas antes.</p>{% endif %}
+            {% if p.chaves %}<p class="dica">Liberado em {{ p.chaves | length }} chave(s): retire-o delas antes
+              (<a href="/modelos/{{ p.nome }}/chaves">Chaves do modelo</a>) ou use a segunda opção.</p>{% endif %}
             <label>Digite <strong>{{ p.nome }}</strong> <input name="confirmacao" autocomplete="off" required></label>
             <button class="perigo">Retirar do gateway</button>
+            {% if p.chaves %}
+            <button class="perigo" formaction="/modelos/despublicar-total"
+                    data-confirmar-botao="Retirar {{ p.nome }} de {{ p.chaves | length }} chave(s) e do gateway? Chaves que ficarem sem modelo passam a ser recusadas.">Retirar de todas as chaves e despublicar</button>
+            {% endif %}
           </form>
         </details>
       </td>

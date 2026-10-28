@@ -418,3 +418,40 @@ document.addEventListener("submit", (e) => {
     copiar(e.currentTarget, linhas.join("\n"));
   });
 })();
+
+// Confirmação em botões de submit (o data-confirmar de formulário vale para todos os botões dele).
+document.addEventListener("click", (e) => {
+  const botao = e.target.closest("[data-confirmar-botao]");
+  if (botao && !window.confirm(botao.dataset.confirmarBotao)) e.preventDefault();
+});
+
+// Chaves do modelo: filtro, marcação em lote e contador de alterações (+liberadas / −retiradas).
+(() => {
+  const form = document.querySelector("[data-selecao]");
+  if (!form) return;
+  const caixas = [...form.querySelectorAll('input[name="chave"]')];
+  const contador = form.querySelector("[data-contador]");
+  const visivel = (c) => !c.closest("[data-linha]").hidden;
+  const atualizar = () => {
+    const mais = caixas.filter((c) => c.checked && c.dataset.tinha === "0").length;
+    const menos = caixas.filter((c) => !c.checked && c.dataset.tinha === "1").length;
+    contador.textContent = `+${mais} / −${menos}`;
+  };
+  form.addEventListener("change", atualizar);
+  form.querySelector("[data-filtro]").addEventListener("input", (e) => {
+    const termo = e.target.value.trim().toLowerCase();
+    form.querySelectorAll("[data-linha]").forEach((l) => (l.hidden = !!termo && !l.dataset.busca.includes(termo)));
+  });
+  form.addEventListener("click", (e) => {
+    const modo = e.target.dataset.marcar;
+    if (!modo) return;
+    caixas.forEach((c) => {
+      if (modo === "todas") c.checked = true;
+      else if (modo === "nenhuma") c.checked = false;
+      else if (modo === "original") c.checked = c.dataset.tinha === "1";
+      else if (modo === "visiveis" && visivel(c)) c.checked = true;
+    });
+    atualizar();
+  });
+  atualizar();
+})();
