@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Revisar chaves de {{ modelo }}{% endblock %}
+{% block conteudo %}
+<h1>Revisar alterações em <span class="mono">{{ modelo }}</span></h1>
+<p class="sub">{{ plano.adicionar | length }} chave(s) vão receber o modelo; de {{ plano.retirar | length }} ele será retirado.
+O estado das chaves é lido de novo ao confirmar.</p>
+
+{% macro grupo(titulo, itens) %}
+{% if itens %}
+<h2>{{ titulo }} ({{ itens | length }})</h2>
+<div class="tabela"><table>
+  <thead><tr><th>Chave</th><th>Antes</th><th>Depois</th></tr></thead>
+  <tbody>{% for i in itens %}
+    <tr><td><a href="/chaves/{{ i.chave.token }}">{{ i.chave.key_alias or i.chave.token[:12] }}</a></td>
+        <td>{{ i.chave.modelos_reais | join(', ') }}</td><td>{{ i.novos | join(', ') }}</td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% endif %}
+{% endmacro %}
+
+{{ grupo("Receberão o modelo", plano.adicionar) }}
+{{ grupo("Perderão o modelo", plano.retirar) }}
+{% if plano.bloqueadas %}
+<p class="aviso atencao">{{ plano.bloqueadas | length }} chave(s) <strong>não serão alteradas</strong> porque ficariam sem nenhum modelo:
+  {{ plano.bloqueadas | map(attribute='chave') | map(attribute='key_alias') | map('string') | join(', ') }}.
+  Libere outro modelo nelas primeiro, ou use "Retirar de todas as chaves e despublicar" na tela de modelos.</p>
+{% endif %}
+
+<form method="post" action="/modelos/{{ modelo }}/chaves/aplicar" class="linha-botoes">
+  {{ m.csrf() }}
+  {% for t in marcadas %}<input type="hidden" name="chave" value="{{ t }}">{% endfor %}
+  {% if plano.alteracoes %}<button>Aplicar em {{ plano.alteracoes | length }} chave(s)</button>{% endif %}
+  <a class="botao secundario" href="/modelos/{{ modelo }}/chaves">Voltar</a>
+</form>
+{% endblock %}

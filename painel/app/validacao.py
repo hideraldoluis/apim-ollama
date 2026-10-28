@@ -9,6 +9,11 @@ class Invalido(ValueError):
     pass
 
 
+# No LiteLLM, models=[] significa "todos os modelos". Uma chave que perde o último modelo recebe este
+# nome, que nunca é publicado no gateway, e passa a ser recusada em tudo (em vez de liberar tudo).
+SEM_ACESSO = "__sem-acesso__"
+
+
 def alias(valor: str) -> str:
     valor = valor.strip()
     if not valor or len(valor) > 100:

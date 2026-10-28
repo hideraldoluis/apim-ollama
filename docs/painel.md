@@ -104,12 +104,35 @@ Para um consumidor usar um modelo, são necessárias três etapas:
 
 1. **Baixar.** Informe o nome do catálogo (`qwen2.5:7b`, `nomic-embed-text`...). O download roda em segundo plano, e o progresso aparece na tela e é atualizado sozinho. Baixar de novo um modelo já instalado o atualiza. Se o painel reiniciar no meio, o download fica como "interrompido"; ao pedir de novo, o Ollama retoma de onde parou.
 2. **Publicar.** Escolha o nome público. O tipo (chat ou embedding) é detectado pelas capacidades do modelo. A publicação é gravada no banco do gateway e vale na hora, sem reinício.
-3. **Liberar nas chaves.** Na página de cada chave, em **Alterar limites e validade**.
+3. **Liberar nas chaves.** Uma chave por vez, na página dela (**Alterar limites e validade**), ou várias de uma vez pela tela **Chaves do modelo** (abaixo).
+
+### Liberar ou retirar um modelo em várias chaves
+
+Na tela **Modelos**, o link **gerenciar** (coluna Chaves do modelo publicado) abre a lista de chaves com caixas de seleção. As que já têm o modelo vêm marcadas. Marque ou desmarque, use o filtro e os atalhos (marcar as visíveis, liberar em todas, retirar de todas, desfazer) e acompanhe o contador `+liberadas / −retiradas`. **Revisar alterações** mostra o antes e o depois de cada chave; só **Aplicar** grava.
+
+- O estado das chaves é lido de novo ao aplicar, então o resultado é seguro mesmo que alguém tenha mexido nas chaves nesse meio tempo, e repetir a operação não causa dano.
+- Uma chave que ficaria **sem nenhum modelo** não é alterada (aparece como "mantida" na revisão).
+- Chaves **sem lista de modelos** (acesso a todos) e **expiradas** não aparecem na seleção.
+- Se o gateway recusar algumas chaves, as demais são aplicadas e o resultado lista as que falharam.
+- Cada chave alterada gera um evento `chave_alterada` (com `origem: massa`) na própria trilha, mais um evento-resumo.
+
+**Retirar de todas as chaves e despublicar** (dentro de **Retirar**, quando o modelo está liberado em chaves) faz tudo num passo, com confirmação digitando o nome. Aqui, a chave cujo único modelo era esse passa a ficar **sem acesso** (ver abaixo), e, se alguma chave falhar, o modelo não é despublicado.
+
+Pela linha de comando, no host (a simulação é o padrão; `--sim` aplica):
+
+```bash
+docker compose run --rm painel python -m app.cli modelo-chaves liberar qwen2.5 --chave time-a --chave time-b
+docker compose run --rm painel python -m app.cli modelo-chaves retirar qwen2.5 --todas --sim
+```
+
+### Chaves expiradas
+
+Uma rotina (a cada 15 minutos, mais o botão **Limpar chaves expiradas** na tela Chaves) tira os modelos das chaves **expiradas**. No LiteLLM, uma lista vazia significa "todos os modelos", então a chave não fica vazia: recebe o marcador `__sem-acesso__`, que não existe no gateway e recusa tudo. A tela mostra "sem modelos". Para reativar uma chave, estenda a validade **e escolha ao menos um modelo** (salvar sem modelo é recusado). Os modelos retirados ficam no evento `chave_modelos_removidos` da auditoria. Chaves **revogadas** não entram: elas já saíram do gateway, e o retrato delas em **Chaves revogadas** guarda os modelos que tinham.
 
 **Carregar/Descarregar** aquece o modelo, para evitar a lentidão da primeira chamada, ou libera memória. O tempo que o modelo fica carregado sem uso segue `OLLAMA_KEEP_ALIVE`.
 
 Proteções:
-- não se retira do gateway um modelo liberado em alguma chave (retire-o das chaves antes);
+- não se retira do gateway um modelo liberado em alguma chave não expirada (retire-o antes, em massa, ou use "Retirar de todas as chaves e despublicar");
 - não se remove do Ollama um modelo publicado ou com download em andamento;
 - retirar ou remover exige digitar o nome;
 - não há modelos fixos: o `config/litellm.yaml` não declara nenhum, e uma instalação nova começa sem modelos publicados. Enquanto nada for publicado, não é possível criar chaves.
@@ -159,6 +182,7 @@ O que a tela mostra:
 | Logs do painel | `docker compose logs -f painel` |
 | Reaplicar o schema | `docker compose up painel-init` (idempotente) |
 | Atualizar o painel após mudar o código | `docker compose up -d --build painel` |
+| Teste da liberação em massa (sem serviços externos) | `python painel/tests/test_modelos_chaves.py` |
 | Teste ponta a ponta (ambiente de teste) | `python painel/tests/e2e.py` e `python painel/tests/e2e_modelos.py` (instruções nos arquivos) |
 
 O schema do painel fica no mesmo banco do LiteLLM e já entra no `pg_dump` descrito em [operacao.md](operacao.md#backup-e-restore).

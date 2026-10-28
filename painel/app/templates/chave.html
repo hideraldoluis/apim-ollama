@@ -27,7 +27,7 @@
     <h2>Dados</h2>
     <dl class="dados">
       <dt>Final da chave</dt><dd class="mono">{{ k.key_name or '—' }}</dd>
-      <dt>Modelos</dt><dd>{{ (k.modelos or []) | join(', ') or 'todos' }}</dd>
+      <dt>Modelos</dt><dd>{{ k.modelos_reais | join(', ') or ('sem modelos (escolha ao menos um ao alterar)' if k.sem_acesso else 'todos') }}</dd>
       <dt>Requisições/min</dt><dd>{{ k.rpm_limit | numero }}</dd>
       <dt>Simultâneas</dt><dd>{{ k.max_parallel_requests | numero }}</dd>
       <dt>Expira em</dt><dd>{{ k.expira_em | datahora if k.expira_em else 'nunca' }}</dd>

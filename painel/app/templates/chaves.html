@@ -7,7 +7,15 @@
 <div class="linha-botoes">
   {% if usuario.papel == 'admin' %}<a class="botao" href="/chaves/nova">Nova chave</a>{% endif %}
   <a class="botao secundario" href="/chaves/revogadas">Chaves revogadas</a>
+  {% if usuario.papel == 'admin' and expiradas_com_modelos %}
+  <form method="post" action="/chaves/limpar-expiradas"
+        data-confirmar="Retirar os modelos de {{ expiradas_com_modelos }} chave(s) expirada(s)?">
+    {{ m.csrf() }}
+    <button class="secundario">Limpar {{ expiradas_com_modelos }} chave(s) expirada(s)</button>
+  </form>
+  {% endif %}
 </div>
+<p class="dica">Chaves expiradas perdem os modelos automaticamente (a rotina roda a cada 15 minutos). Ao estender a validade, escolha de novo os modelos.</p>
 <div class="tabela"><table>
   <thead><tr>
     <th>Nome</th><th>Criada para</th><th>Final</th><th>Situação</th><th>Modelos</th>
@@ -20,7 +28,7 @@
       <td>{{ k.criado_para or '—' }}</td>
       <td class="mono">{{ k.key_name or '—' }}</td>
       <td>{{ m.status_chave(k.status) }}</td>
-      <td>{{ (k.modelos or []) | join(', ') or 'todos' }}</td>
+      <td>{{ k.modelos_reais | join(', ') or ('sem modelos' if k.sem_acesso else 'todos') }}</td>
       <td class="num">{{ k.rpm_limit | numero }}</td>
       <td class="num">{{ k.max_parallel_requests | numero }}</td>
       <td>{{ k.expira_em | datahora if k.expira_em else 'nunca' }}</td>

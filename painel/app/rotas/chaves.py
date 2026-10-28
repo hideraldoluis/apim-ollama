@@ -44,7 +44,8 @@ def lista(request: Request, u: dict = Depends(auth.usuario_logado)):
     chaves = consultas.chaves()
     for k in chaves:
         k["tok_30d"] = tokens.get(k["token"], 0)
-    return render(request, "chaves.html", {"chaves": chaves})
+    expiradas = sum(1 for k in chaves if k["status"] == "expirada" and k["modelos_reais"])
+    return render(request, "chaves.html", {"chaves": chaves, "expiradas_com_modelos": expiradas})
 
 
 @router.get("/chaves/revogadas")
@@ -88,7 +89,7 @@ def detalhe(request: Request, token: str, u: dict = Depends(auth.usuario_logado)
     disponiveis, erro = _modelos_disponiveis() if u["papel"] == "admin" else ([], None)
     return render(request, "chave.html", {
         "k": k, "por_modelo": por_modelo, "inicio": inicio, "fim": fim, "agendada": agendada,
-        "trilha": trilha, "disponiveis": sorted(set(disponiveis) | set(k["modelos"] or [])),
+        "trilha": trilha, "disponiveis": sorted(set(disponiveis) | set(k["modelos_reais"])),
         "erro_gateway": erro, "carencia": config.rotacao_carencia_dias, "validade_padrao": config.chave_validade,
     })
 
@@ -122,6 +123,14 @@ def criar(request: Request, u: dict = Depends(auth.exigir_admin),
                                                  "titulo": "Chave criada"})
 
 
+@router.post("/chaves/limpar-expiradas")
+def limpar_expiradas(request: Request, u: dict = Depends(auth.exigir_admin)):
+    alteradas, falhas = rotinas.limpar_modelos_expirados(u["login"], auth.ip_cliente(request))
+    if falhas:
+        return redirecionar("/chaves", f"{alteradas} chave(s) limpa(s); falharam: {', '.join(falhas[:5])}.", "erro")
+    return redirecionar("/chaves", f"Modelos retirados de {alteradas} chave(s) expirada(s).")
+
+
 @router.post("/chaves/{token}/alterar")
 def alterar(request: Request, token: str, u: dict = Depends(auth.exigir_admin),
             modelos: list[str] = Form([]), rpm: str = Form(""), paralelas: str = Form(""),
@@ -131,7 +140,7 @@ def alterar(request: Request, token: str, u: dict = Depends(auth.exigir_admin),
     mudancas: dict = {}
     try:
         # Modelos já liberados continuam aceitos mesmo que tenham saído do gateway.
-        modelos = validacao.modelos(modelos, disponiveis + (k["modelos"] or []))
+        modelos = validacao.modelos(modelos, disponiveis + k["modelos_reais"])
         if sorted(modelos) != sorted(k["modelos"] or []):
             mudancas["modelos"] = modelos
         rpm_novo = validacao.inteiro_positivo("RPM", rpm)

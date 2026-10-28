@@ -1,7 +1,7 @@
 """Consultas de leitura compartilhadas pelas telas (sem texto de prompt/resposta)."""
 from datetime import date, datetime, time, timedelta
 
-from . import db
+from . import db, validacao
 from .config import config
 
 # Agrupamentos permitidos no consumo -> colunas SQL (lista fechada: nada vem do usuário).
@@ -76,6 +76,8 @@ def chaves() -> list[dict]:
     linhas = db.consultar("select * from painel.chaves()")
     for k in linhas:
         k["status"] = status_chave(k, agora)
+        k["modelos_reais"] = [m for m in (k["modelos"] or []) if m != validacao.SEM_ACESSO]
+        k["sem_acesso"] = validacao.SEM_ACESSO in (k["modelos"] or [])
     return linhas
 
 
