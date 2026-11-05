@@ -17,6 +17,7 @@ Emergência (no host)        ──túnel SSH────► 127.0.0.1:8080     
 | Logs sem texto (filtros, CSV de metadados) | ✅ | ✅ |
 | Modelos: instalados, publicados, memória, uso e chaves que os liberam | ✅ | ✅ |
 | Chat: conversar com um modelo publicado (via master key, fora dos limites de uma chave) | ✅ | ✅ |
+| Concierge na home: pedir consultas em linguagem natural | ✅ (só leitura) | ✅ (consulta e propõe alterações) |
 | Baixar, publicar, retirar, remover, carregar e descarregar modelos (inclui **Aquecer** no chat) | ❌ | ✅ |
 | Texto de prompts e respostas (por requisição ou exportação com justificativa) | ❌ | ✅ auditado |
 | Criar, alterar, bloquear, rotacionar e revogar chaves | ❌ | ✅ |
@@ -161,6 +162,35 @@ O que a tela mostra:
 - **Erros sempre visíveis:** recusa do gateway, erro no meio da resposta, resposta vazia e timeout (600 s,
   o mesmo do LiteLLM) aparecem na bolha, com **Tentar de novo**. **Parar** interrompe a geração no Ollama.
 - **Copiar conversa:** copia a conversa em Markdown, com parâmetros e métricas, para anexar a uma avaliação.
+
+## Concierge
+
+Na **Visão geral** há um chat em linguagem natural que consulta e opera o painel ("como está o uso esta
+semana?", "crie uma chave para o time dados com o modelo llama3 por 30 dias", "retire o qwen de todas as chaves").
+
+- **Permissões do usuário logado.** O leitor só recebe ferramentas de consulta; o admin também recebe as de
+  alteração. A regra é validada no servidor a cada chamada, não pelo que o modelo diz.
+- **Alteração só com confirmação.** O modelo apenas *propõe*: aparece um cartão com o resumo da ação, e nada
+  acontece até você clicar em **Confirmar**. Quando a tela equivalente exige motivo ou digitar o nome (revogar chave,
+  retirar ou remover modelo), o cartão exige o mesmo. A proposta vale uma vez e expira em 10 minutos; no máximo
+  8 pendentes por usuário. A execução usa as mesmas regras das telas (`painel/app/servicos/`).
+- **Segredos fora do modelo.** A chave `sk-` nova e as senhas temporárias aparecem só no cartão, uma vez; não
+  passam pelo modelo, não vão ao banco nem à auditoria.
+- **Texto dos logs não é acessível ao concierge** (nem consultas de conteúdo); ele indica a tela **Logs**.
+- **Auditoria.** Cada ação confirmada gera o evento normal (ex.: "Chave revogada") com `origem: concierge`, mais
+  `concierge_proposta`, `concierge_confirmada`, `concierge_cancelada` ou `concierge_falhou` com o id da proposta.
+  O texto da conversa não é guardado pelo painel (fica só no spend log do gateway, como no Chat).
+- **Master key.** Como o Chat, usa a master key: fora dos limites de chave, aparece no consumo e nos logs.
+  O freio é do painel: 20 mensagens por minuto por usuário (configurável), uma conversa por vez por usuário e
+  no máximo 2 conversas simultâneas.
+
+**Configuração (admin):** tela **Concierge** no menu. O modelo é escolhido ali (fica no banco, não no `.env`) entre
+os modelos de chat publicados cujo modelo no Ollama declara suporte a ferramentas (`tools`); também liga/desliga e
+define o limite por minuto. Sem modelo válido, a home mostra o concierge desativado. Com `OLLAMA_MAX_LOADED_MODELS=1`,
+usar um modelo diferente dos dos consumidores faz o Ollama trocar de modelo (lento): prefira um que já fique carregado.
+
+Limites conhecidos: o contexto do Ollama (16k) comporta as ~29 ferramentas do admin (~4,5 mil tokens) com folga
+pequena; resultados de ferramentas são truncados a 4 mil caracteres e a conversa a 20 mensagens.
 
 ## Logs, consumo e retenção
 

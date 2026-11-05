@@ -168,6 +168,30 @@ create table if not exists painel.downloads (
 );
 create index if not exists downloads_iniciado_idx on painel.downloads (iniciado_em desc);
 
+-- Configurações do painel (ex.: modelo do concierge), editadas por admin na própria tela.
+create table if not exists painel.configuracoes (
+    chave          text primary key,
+    valor          jsonb not null,
+    atualizado_em  timestamptz not null default now(),
+    atualizado_por text
+);
+
+-- Concierge: ações propostas pelo modelo que aguardam confirmação humana. O texto da conversa não é guardado.
+create table if not exists painel.concierge_acoes (
+    id           uuid primary key default gen_random_uuid(),
+    usuario_id   bigint not null references painel.usuarios (id),
+    ferramenta   text not null,
+    args         jsonb not null,
+    resumo       text not null,
+    estado       text not null default 'pendente'
+                 check (estado in ('pendente', 'confirmada', 'cancelada', 'expirada', 'falhou')),
+    criada_em    timestamptz not null default now(),
+    expira_em    timestamptz not null,
+    resolvida_em timestamptz,
+    resultado    jsonb
+);
+create index if not exists concierge_acoes_usuario_idx on painel.concierge_acoes (usuario_id, estado);
+
 -- ---------------------------------------------------------------------------
 -- Funções de leitura do LiteLLM
 -- Modelo: nome público (model_group). A coluna model guarda o nome interno (ex.: ollama_chat/llama3.2)
@@ -406,7 +430,8 @@ grant execute on function
 -- Tabelas próprias: o painel_app administra usuários e sessões; auditoria e histórico só crescem.
 revoke all on all tables in schema painel from painel_app, painel_conteudo;
 grant select, insert, update on painel.usuarios, painel.revogacoes_agendadas, painel.consumo_diario,
-                                painel.consolidacao, painel.downloads to painel_app;
+                                painel.consolidacao, painel.downloads, painel.configuracoes,
+                                painel.concierge_acoes to painel_app;
 grant select, insert, delete on painel.sessoes, painel.senhas_historico to painel_app;
 grant update on painel.sessoes to painel_app;
 grant select, insert on painel.auditoria, painel.chaves_historico, painel.revisoes_acesso to painel_app;

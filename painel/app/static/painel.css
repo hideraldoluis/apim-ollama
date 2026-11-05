@@ -220,3 +220,27 @@ button.pequeno { padding: 3px 10px; font-size: 0.85rem; }
 tbody.grupo tr.subtotal td { background: var(--neutro-fundo); font-weight: 600; }
 tbody.grupo tr.detalhe td:first-child { padding-left: 28px; color: var(--suave); }
 tbody.grupo tr.detalhe meter { width: 80px; }
+
+/* Concierge (home) */
+.concierge .concierge-historico {
+  display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 120px; max-height: 420px;
+  background: var(--fundo); border: 1px solid var(--borda); border-radius: var(--raio); padding: 12px; margin: 10px 0;
+}
+.concierge .concierge-historico .bolha { max-width: 92%; }
+.concierge-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.concierge-form textarea { flex: 1 1 320px; min-height: 44px; max-height: 160px; resize: none; }
+.concierge .bolha ul { margin: 4px 0; padding-left: 20px; }
+.concierge .bolha .texto { white-space: normal; }
+.concierge .bolha code { background: var(--neutro-fundo); padding: 0 4px; border-radius: 3px; }
+.concierge-ferramentas { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px; }
+.concierge-ferramentas .selo { font-weight: 400; }
+.concierge-cartao {
+  margin-top: 8px; padding: 10px 12px; border: 1px solid var(--aviso); background: var(--aviso-fundo);
+  color: var(--texto); border-radius: var(--raio); display: grid; gap: 8px;
+}
+.concierge-cartao .titulo { font-weight: 600; }
+.concierge-cartao .acoes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.concierge-cartao.resolvido { border-color: var(--borda); background: var(--superficie); }
+.concierge-segredo { display: grid; gap: 6px; margin-top: 4px; padding: 8px; border: 1px dashed var(--erro); border-radius: var(--raio); }
+.concierge-segredo input { font-family: ui-monospace, monospace; }
+.linha-check { flex-direction: row; align-items: center; gap: 8px; color: var(--texto); }

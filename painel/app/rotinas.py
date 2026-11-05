@@ -4,7 +4,8 @@
 - executa revogações agendadas pela rotação de chaves;
 - tira os modelos das chaves expiradas (ficam sem acesso mesmo que a validade seja estendida depois);
 - desativa usuários sem login há PAINEL_INATIVIDADE_DIAS (nunca o último admin ativo);
-- remove sessões expiradas.
+- remove sessões expiradas;
+- expira propostas pendentes do concierge.
 """
 import logging
 import threading
@@ -134,8 +135,14 @@ def limpar_sessoes() -> None:
     )
 
 
+def expirar_propostas_concierge() -> None:
+    db.executar("update painel.concierge_acoes set estado = 'expirada', resolvida_em = now() "
+                "where estado = 'pendente' and expira_em <= now()")
+
+
 def rodar_uma_vez() -> None:
-    for tarefa in (consolidar_consumo, executar_revogacoes, limpar_modelos_expirados, desativar_inativos, limpar_sessoes):
+    for tarefa in (consolidar_consumo, executar_revogacoes, limpar_modelos_expirados, desativar_inativos,
+                   limpar_sessoes, expirar_propostas_concierge):
         try:
             tarefa()
         except Exception:
