@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, Request
 
 from .. import autenticacao as auth, consultas, db
+from ..concierge import configuracao
 from ..web import render
 
 router = APIRouter()
@@ -22,7 +23,9 @@ def visao_geral(request: Request, u: dict = Depends(auth.usuario_logado)):
         "tok_total": sum(r["tok_total"] for r in por_dia),
         "chaves_ativas": sum(1 for k in chaves if k["status"] in ("ativa", "expirando")),
     }
+    cfg = configuracao.obter()
     return render(request, "inicio.html", {
+        "concierge": {"ativo": bool(cfg["ativo"] and cfg["modelo"]), "modelo": cfg["modelo"]},
         "inicio": inicio, "fim": fim, "por_dia": por_dia, "top": por_chave[:10], "modelos": modelos,
         "atencao": atencao, "total": total,
         "max_dia": max((r["tok_total"] for r in por_dia), default=0) or 1,

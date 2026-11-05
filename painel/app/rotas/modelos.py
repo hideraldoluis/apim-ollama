@@ -9,7 +9,8 @@ Regras de proteção:
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from .. import auditoria, autenticacao as auth, consultas, downloads, litellm, modelos_chaves, ollama, validacao
+from .. import autenticacao as auth, consultas, downloads, litellm, modelos_chaves, ollama, validacao
+from ..servicos import modelos as servico
 from ..web import redirecionar, render
 
 router = APIRouter(prefix="/modelos")
@@ -69,9 +70,8 @@ def progresso(request: Request, u: dict = Depends(auth.usuario_logado)):
 @router.post("/baixar")
 def baixar(request: Request, u: dict = Depends(auth.exigir_admin), modelo: str = Form("")):
     try:
-        modelo = validacao.modelo_ollama(modelo)
-        downloads.iniciar(modelo, u["login"], auth.ip_cliente(request))
-    except (validacao.Invalido, ValueError) as e:
+        modelo = servico.baixar(u, auth.ip_cliente(request), modelo)
+    except validacao.Invalido as e:
         return redirecionar("/modelos", str(e), "erro")
     return redirecionar("/modelos", f"Download de {modelo} iniciado. O progresso aparece abaixo.")
 
@@ -80,40 +80,19 @@ def baixar(request: Request, u: dict = Depends(auth.exigir_admin), modelo: str =
 def publicar(request: Request, u: dict = Depends(auth.exigir_admin),
              modelo: str = Form(""), nome_publico: str = Form("")):
     try:
-        nome_publico = validacao.modelo_publico(nome_publico)
-        instalado = next((m for m in ollama.instalados() if m["nome"] == modelo), None)
-        if instalado is None:
-            raise validacao.Invalido(f"{modelo} não está instalado no Ollama.")
-        if any(p["nome"] == nome_publico for p in litellm.modelos_gateway()):
-            raise validacao.Invalido(f"Já existe um modelo publicado como {nome_publico}.")
-        embedding = ollama.e_embedding(instalado["capacidades"])
-        litellm.publicar_modelo(nome_publico, modelo, embedding)
+        servico.publicar(u, auth.ip_cliente(request), modelo, nome_publico)
     except (validacao.Invalido, ollama.ErroOllama, litellm.ErroLiteLLM) as e:
         return redirecionar("/modelos", str(e), "erro")
-    auditoria.registrar("modelo_publicado", u["login"], auth.ip_cliente(request), nome_publico,
-                        {"ollama": modelo, "tipo": "embedding" if embedding else "chat"})
-    return redirecionar("/modelos", f"{modelo} publicado como {nome_publico}. Libere-o nas chaves que devem usá-lo.")
+    return redirecionar("/modelos", f"{modelo} publicado como {nome_publico.strip()}. Libere-o nas chaves que devem usá-lo.")
 
 
 @router.post("/despublicar")
 def despublicar(request: Request, u: dict = Depends(auth.exigir_admin),
                 model_id: str = Form(""), confirmacao: str = Form("")):
     try:
-        alvo = next((p for p in litellm.modelos_gateway() if p["id"] == model_id), None)
-        if alvo is None:
-            raise validacao.Invalido("Modelo não encontrado no gateway.")
-        em_uso = [k["key_alias"] or k["token"][:12] for k in consultas.chaves()
-                  if k["status"] != "expirada" and alvo["nome"] in (k["modelos"] or [])]
-        if em_uso:
-            raise validacao.Invalido(f"{alvo['nome']} está liberado nas chaves: {', '.join(em_uso)}. "
-                                     "Retire-o dessas chaves (Chaves do modelo) ou use \"Retirar de todas e despublicar\".")
-        if confirmacao.strip() != alvo["nome"]:
-            raise validacao.Invalido("Para retirar, digite o nome público do modelo exatamente como aparece.")
-        litellm.despublicar_modelo(model_id)
+        alvo = servico.despublicar(u, auth.ip_cliente(request), model_id, confirmacao)
     except (validacao.Invalido, litellm.ErroLiteLLM) as e:
         return redirecionar("/modelos", str(e), "erro")
-    auditoria.registrar("modelo_despublicado", u["login"], auth.ip_cliente(request), alvo["nome"],
-                        {"ollama": alvo["ollama"], "id": model_id})
     return redirecionar("/modelos", f"{alvo['nome']} retirado do gateway. Continua instalado no Ollama.")
 
 
@@ -121,24 +100,11 @@ def despublicar(request: Request, u: dict = Depends(auth.exigir_admin),
 def despublicar_total(request: Request, u: dict = Depends(auth.exigir_admin),
                       model_id: str = Form(""), confirmacao: str = Form("")):
     """Retira o modelo de todas as chaves e depois do gateway. Chave que ficaria sem modelo passa a SEM_ACESSO."""
-    ip = auth.ip_cliente(request)
     try:
-        alvo = next((p for p in litellm.modelos_gateway() if p["id"] == model_id), None)
-        if alvo is None:
-            raise validacao.Invalido("Modelo não encontrado no gateway.")
-        if confirmacao.strip() != alvo["nome"]:
-            raise validacao.Invalido("Para retirar, digite o nome público do modelo exatamente como aparece.")
-        plano = modelos_chaves.planejar(alvo["nome"], consultas.chaves(), set(), ultimo_vira_sem_acesso=True)
-        res = modelos_chaves.executar(plano, u["login"], ip, "despublicar-total")
-        if res.falhas:
-            raise validacao.Invalido("O modelo não foi retirado do gateway porque algumas chaves não foram alteradas. "
-                                     + modelos_chaves.resumo(plano, res))
-        litellm.despublicar_modelo(model_id)
+        alvo, alteradas = servico.despublicar_total(u, auth.ip_cliente(request), model_id, confirmacao)
     except (validacao.Invalido, litellm.ErroLiteLLM) as e:
         return redirecionar("/modelos", str(e), "erro")
-    auditoria.registrar("modelo_despublicado", u["login"], ip, alvo["nome"],
-                        {"ollama": alvo["ollama"], "id": model_id, "chaves_alteradas": res.alteradas})
-    return redirecionar("/modelos", f"{alvo['nome']} retirado de {res.alteradas} chave(s) e do gateway. "
+    return redirecionar("/modelos", f"{alvo['nome']} retirado de {alteradas} chave(s) e do gateway. "
                                     "Continua instalado no Ollama.")
 
 
@@ -182,7 +148,7 @@ def chaves_revisar(request: Request, nome: str, u: dict = Depends(auth.exigir_ad
 @router.post("/{nome}/chaves/aplicar")
 def chaves_aplicar(request: Request, nome: str, u: dict = Depends(auth.exigir_admin), chave: list[str] = Form([])):
     _publicado_ou_404(nome)
-    plano, res = modelos_chaves.aplicar(nome, set(chave), u["login"], auth.ip_cliente(request))
+    plano, res = servico.ajustar_chaves(u, auth.ip_cliente(request), nome, set(chave))
     return redirecionar(f"/modelos/{nome}/chaves", modelos_chaves.resumo(plano, res), "erro" if res.falhas else "ok")
 
 
@@ -190,21 +156,9 @@ def chaves_aplicar(request: Request, nome: str, u: dict = Depends(auth.exigir_ad
 def remover(request: Request, u: dict = Depends(auth.exigir_admin),
             modelo: str = Form(""), confirmacao: str = Form("")):
     try:
-        if modelo not in {m["nome"] for m in ollama.instalados()}:
-            raise validacao.Invalido(f"{modelo} não está instalado no Ollama.")
-        publicados = [p["nome"] for p in litellm.modelos_gateway()
-                      if p["ollama"] and ollama.nome_completo(p["ollama"]) == modelo]
-        if publicados:
-            raise validacao.Invalido(f"{modelo} está publicado no gateway como {', '.join(publicados)}. "
-                                     "Retire-o do gateway antes.")
-        if downloads.em_andamento(modelo):
-            raise validacao.Invalido(f"Há um download de {modelo} em andamento.")
-        if confirmacao.strip() != modelo:
-            raise validacao.Invalido("Para remover, digite o nome do modelo exatamente como aparece.")
-        ollama.remover(modelo)
+        servico.remover(u, auth.ip_cliente(request), modelo, confirmacao)
     except (validacao.Invalido, ollama.ErroOllama, litellm.ErroLiteLLM) as e:
         return redirecionar("/modelos", str(e), "erro")
-    auditoria.registrar("modelo_removido", u["login"], auth.ip_cliente(request), modelo)
     return redirecionar("/modelos", f"{modelo} removido do Ollama.")
 
 
@@ -220,13 +174,7 @@ def descarregar(request: Request, u: dict = Depends(auth.exigir_admin), modelo: 
 
 def _memoria(request: Request, u: dict, modelo: str, carregar: bool):
     try:
-        instalado = next((m for m in ollama.instalados() if m["nome"] == modelo), None)
-        if instalado is None:
-            raise validacao.Invalido(f"{modelo} não está instalado no Ollama.")
-        embedding = ollama.e_embedding(instalado["capacidades"])
-        (ollama.carregar if carregar else ollama.descarregar)(modelo, embedding)
+        servico.memoria(u, auth.ip_cliente(request), modelo, carregar)
     except (validacao.Invalido, ollama.ErroOllama) as e:
         return redirecionar("/modelos", str(e), "erro")
-    auditoria.registrar("modelo_carregado" if carregar else "modelo_descarregado", u["login"],
-                        auth.ip_cliente(request), modelo)
     return redirecionar("/modelos", f"{modelo} {'carregado na' if carregar else 'descarregado da'} memória.")

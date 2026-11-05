@@ -1,4 +1,4 @@
-"""Governança de usuários do painel (admin).
+"""Rotas de usuários do painel (admin); as regras ficam em app/servicos/usuarios.py.
 
 Regras:
 - não existe autocadastro; só admin cria usuários, sempre com senha temporária (24 h, troca obrigatória);
@@ -8,48 +8,14 @@ Regras:
 - mudança de papel, redefinição de senha e desativação encerram as sessões do usuário.
 """
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from psycopg.errors import UniqueViolation
 from psycopg.types.json import Jsonb
 
-from .. import auditoria, autenticacao as auth, db, senhas, validacao
+from .. import auditoria, autenticacao as auth, db, validacao
 from ..config import config
+from ..servicos import NaoEncontrado, RegraViolada, usuarios as servico
 from ..web import redirecionar, render
 
 router = APIRouter(prefix="/usuarios")
-
-
-class RegraViolada(Exception):
-    pass
-
-
-def _usuario_ou_404(conn, id_: int) -> dict:
-    u = conn.execute("select * from painel.usuarios where id = %s for update", (id_,)).fetchone()
-    if u is None:
-        raise HTTPException(404)
-    return u
-
-
-def _garantir_outro_admin(conn, alvo_id: int) -> None:
-    """Trava os admins ativos e confirma que resta ao menos um além do alvo."""
-    admins = conn.execute(
-        "select id from painel.usuarios where papel = 'admin' and ativo order by id for update").fetchall()
-    if not any(a["id"] != alvo_id for a in admins):
-        raise RegraViolada("Operação recusada: é preciso manter ao menos um administrador ativo.")
-
-
-def _nao_si_mesmo(atual: dict, alvo_id: int) -> None:
-    if atual["id"] == alvo_id:
-        raise RegraViolada("Você não pode executar esta operação sobre o próprio usuário.")
-
-
-def _nova_temporaria(conn, alvo_id: int) -> str:
-    temporaria = senhas.gerar_temporaria()
-    conn.execute(
-        "update painel.usuarios set senha_hash = %s, deve_trocar_senha = true, "
-        "senha_temp_expira_em = now() + make_interval(hours => %s), falhas_login = 0, bloqueado_ate = null "
-        "where id = %s",
-        (senhas.gerar_hash(temporaria), config.senha_temp_validade_h, alvo_id))
-    return temporaria
 
 
 @router.get("")
@@ -71,28 +37,11 @@ def criar(request: Request, u: dict = Depends(auth.exigir_admin),
           login: str = Form(""), nome: str = Form(""), papel: str = Form("leitor")):
     form = {"login": login, "nome": nome, "papel": papel}
     try:
-        login = validacao.login(login)
-        nome = validacao.nome(nome)
-        papel = validacao.papel(papel)
+        alvo, temporaria = servico.criar(u, auth.ip_cliente(request), login, nome, papel)
     except validacao.Invalido as e:
         return render(request, "usuario_novo.html", {"erros": [str(e)], "form": form}, status=400)
-    temporaria = senhas.gerar_temporaria()
-    try:
-        with db.transacao() as conn:
-            novo = conn.execute(
-                "insert into painel.usuarios (login, nome, papel, senha_hash, deve_trocar_senha, "
-                "senha_temp_expira_em, criado_por) values (%s, %s, %s, %s, true, "
-                "now() + make_interval(hours => %s), %s) returning id",
-                (login, nome, papel, senhas.gerar_hash(temporaria), config.senha_temp_validade_h, u["login"]),
-            ).fetchone()
-            auditoria.registrar("usuario_criado", u["login"], auth.ip_cliente(request), login,
-                                {"nome": nome, "papel": papel}, conn)
-    except UniqueViolation:
-        return render(request, "usuario_novo.html",
-                      {"erros": ["Já existe um usuário com esse login (inclusive desativado)."], "form": form},
-                      status=400)
     return render(request, "senha_temporaria.html", {
-        "alvo": {"id": novo["id"], "login": login, "nome": nome}, "temporaria": temporaria,
+        "alvo": alvo, "temporaria": temporaria,
         "horas": config.senha_temp_validade_h, "titulo": "Usuário criado"})
 
 
@@ -139,38 +88,29 @@ def detalhe(request: Request, id_: int, u: dict = Depends(auth.exigir_admin)):
     return render(request, "usuario.html", {"alvo": alvo, "trilha": trilha})
 
 
+def _executar(id_: int, acao):
+    """Roda a ação do serviço traduzindo usuário inexistente em 404."""
+    try:
+        return acao()
+    except NaoEncontrado:
+        raise HTTPException(404) from None
+
+
 @router.post("/{id_}/papel")
 def alterar_papel(request: Request, id_: int, u: dict = Depends(auth.exigir_admin), papel: str = Form("")):
     try:
-        papel = validacao.papel(papel)
-        with db.transacao() as conn:
-            _nao_si_mesmo(u, id_)
-            alvo = _usuario_ou_404(conn, id_)
-            if alvo["papel"] == papel:
-                return redirecionar(f"/usuarios/{id_}", "Nada foi alterado.", "aviso")
-            if alvo["papel"] == "admin":
-                _garantir_outro_admin(conn, id_)
-            conn.execute("update painel.usuarios set papel = %s where id = %s", (papel, id_))
-            auth.encerrar_sessoes_do_usuario(id_, conn)
-            auditoria.registrar("usuario_papel", u["login"], auth.ip_cliente(request), alvo["login"],
-                                {"antes": alvo["papel"], "depois": papel}, conn)
+        mudou = _executar(id_, lambda: servico.alterar_papel(u, auth.ip_cliente(request), id_, papel))
     except (RegraViolada, validacao.Invalido) as e:
         return redirecionar(f"/usuarios/{id_}", str(e), "erro")
+    if not mudou:
+        return redirecionar(f"/usuarios/{id_}", "Nada foi alterado.", "aviso")
     return redirecionar(f"/usuarios/{id_}", "Papel alterado. As sessões do usuário foram encerradas.")
 
 
 @router.post("/{id_}/redefinir-senha")
 def redefinir_senha(request: Request, id_: int, u: dict = Depends(auth.exigir_admin)):
     try:
-        with db.transacao() as conn:
-            _nao_si_mesmo(u, id_)
-            alvo = _usuario_ou_404(conn, id_)
-            if not alvo["ativo"]:
-                raise RegraViolada("Usuário desativado: use Reativar, que já gera uma senha temporária.")
-            temporaria = _nova_temporaria(conn, id_)
-            auth.encerrar_sessoes_do_usuario(id_, conn)
-            auditoria.registrar("usuario_senha_redefinida", u["login"], auth.ip_cliente(request), alvo["login"],
-                                conn=conn)
+        alvo, temporaria = _executar(id_, lambda: servico.redefinir_senha(u, auth.ip_cliente(request), id_))
     except RegraViolada as e:
         return redirecionar(f"/usuarios/{id_}", str(e), "erro")
     return render(request, "senha_temporaria.html", {"alvo": alvo, "temporaria": temporaria,
@@ -180,32 +120,18 @@ def redefinir_senha(request: Request, id_: int, u: dict = Depends(auth.exigir_ad
 
 @router.post("/{id_}/desbloquear")
 def desbloquear(request: Request, id_: int, u: dict = Depends(auth.exigir_admin)):
-    with db.transacao() as conn:
-        alvo = _usuario_ou_404(conn, id_)
-        conn.execute("update painel.usuarios set bloqueado_ate = null, falhas_login = 0 where id = %s", (id_,))
-        auditoria.registrar("usuario_desbloqueado", u["login"], auth.ip_cliente(request), alvo["login"], conn=conn)
+    _executar(id_, lambda: servico.desbloquear(u, auth.ip_cliente(request), id_))
     return redirecionar(f"/usuarios/{id_}", "Usuário desbloqueado.")
 
 
 @router.post("/{id_}/desativar")
 def desativar(request: Request, id_: int, u: dict = Depends(auth.exigir_admin), motivo: str = Form("")):
     try:
-        motivo = validacao.motivo(motivo)
-        with db.transacao() as conn:
-            _nao_si_mesmo(u, id_)
-            alvo = _usuario_ou_404(conn, id_)
-            if not alvo["ativo"]:
-                return redirecionar(f"/usuarios/{id_}", "O usuário já está desativado.", "aviso")
-            if alvo["papel"] == "admin":
-                _garantir_outro_admin(conn, id_)
-            conn.execute(
-                "update painel.usuarios set ativo = false, desativado_em = now(), desativado_por = %s, "
-                "motivo_desativacao = %s where id = %s", (u["login"], motivo, id_))
-            auth.encerrar_sessoes_do_usuario(id_, conn)
-            auditoria.registrar("usuario_desativado", u["login"], auth.ip_cliente(request), alvo["login"],
-                                {"motivo": motivo}, conn)
+        mudou = _executar(id_, lambda: servico.desativar(u, auth.ip_cliente(request), id_, motivo))
     except (RegraViolada, validacao.Invalido) as e:
         return redirecionar(f"/usuarios/{id_}", str(e), "erro")
+    if not mudou:
+        return redirecionar(f"/usuarios/{id_}", "O usuário já está desativado.", "aviso")
     return redirecionar(f"/usuarios/{id_}", "Usuário desativado.")
 
 
@@ -213,18 +139,11 @@ def desativar(request: Request, id_: int, u: dict = Depends(auth.exigir_admin), 
 def reativar(request: Request, id_: int, u: dict = Depends(auth.exigir_admin)):
     """Reativação sempre gera nova senha temporária (a antiga pode estar comprometida ou esquecida)."""
     try:
-        with db.transacao() as conn:
-            _nao_si_mesmo(u, id_)
-            alvo = _usuario_ou_404(conn, id_)
-            if alvo["ativo"]:
-                return redirecionar(f"/usuarios/{id_}", "O usuário já está ativo.", "aviso")
-            conn.execute(
-                "update painel.usuarios set ativo = true, reativado_em = now(), desativado_em = null, "
-                "desativado_por = null, motivo_desativacao = null where id = %s", (id_,))
-            temporaria = _nova_temporaria(conn, id_)
-            auditoria.registrar("usuario_reativado", u["login"], auth.ip_cliente(request), alvo["login"], conn=conn)
+        alvo, temporaria = _executar(id_, lambda: servico.reativar(u, auth.ip_cliente(request), id_))
     except RegraViolada as e:
         return redirecionar(f"/usuarios/{id_}", str(e), "erro")
+    if alvo is None:
+        return redirecionar(f"/usuarios/{id_}", "O usuário já está ativo.", "aviso")
     return render(request, "senha_temporaria.html", {"alvo": alvo, "temporaria": temporaria,
                                                      "horas": config.senha_temp_validade_h,
                                                      "titulo": "Usuário reativado"})

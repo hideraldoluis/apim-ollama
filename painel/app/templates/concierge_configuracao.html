@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block titulo %}Concierge{% endblock %}
+{% block conteudo %}
+<h1>Concierge</h1>
+<p class="sub">Chat em linguagem natural na página inicial. Executa as mesmas operações do painel com as permissões de
+  quem está logado (leitor só consulta); alterações são só propostas e exigem confirmação na tela. Usa a master key
+  do gateway, então não passa pelos limites de chave: o limite abaixo é o freio.</p>
+
+{% if erro %}<p class="aviso erro">Não foi possível listar os modelos: {{ erro }}</p>{% endif %}
+
+<form class="formulario painel" method="post" action="/concierge/configuracao">
+  {{ m.csrf() }}
+  <label>Modelo
+    <select name="modelo">
+      <option value="">(nenhum)</option>
+      {% for mod in elegiveis %}
+      <option value="{{ mod.nome }}" {% if mod.nome == cfg.modelo %}selected{% endif %}>{{ mod.nome }}{% if mod.parametros %} · {{ mod.parametros }}{% endif %}</option>
+      {% endfor %}
+      {% if cfg.modelo and cfg.modelo not in (elegiveis | map(attribute='nome') | list) %}
+      <option value="{{ cfg.modelo }}" selected>{{ cfg.modelo }} (indisponível)</option>
+      {% endif %}
+    </select>
+    <span class="dica">Só aparecem modelos de chat publicados no gateway cujo modelo no Ollama declara suporte a
+      ferramentas (<code>tools</code>).
+      {% if not elegiveis and not erro %}<strong>Nenhum encontrado:</strong> baixe e publique um em <a href="/modelos">Modelos</a>.{% endif %}</span>
+  </label>
+  <label class="linha-check"><input type="checkbox" name="ativo" value="1" {% if cfg.ativo %}checked{% endif %}> Concierge ativo na página inicial</label>
+  <label>Limite de mensagens por minuto, por usuário
+    <input name="limite_msg_min" type="number" min="{{ limite_min }}" max="{{ limite_max }}" value="{{ cfg.limite_msg_min }}" required>
+    <span class="dica">Também há uma conversa por vez por usuário e no máximo duas conversas simultâneas no total.</span>
+  </label>
+  <p class="dica">Com o Ollama configurado para um único modelo carregado, usar um modelo diferente dos que os
+    consumidores usam faz o Ollama trocar de modelo (lento). Prefira um modelo que já fique carregado.</p>
+  <div><button>Salvar</button> <a href="/">Voltar</a></div>
+</form>
+{% endblock %}

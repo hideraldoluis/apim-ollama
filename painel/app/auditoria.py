@@ -49,4 +49,9 @@ ACOES = {
     "log_conteudo_visto": "Conteúdo de log visualizado",
     "exportacao": "Exportação",
     "cli_admin": "Operação via CLI",
+    "concierge_configurado": "Concierge configurado",
+    "concierge_proposta": "Concierge propôs uma ação",
+    "concierge_confirmada": "Ação do concierge confirmada",
+    "concierge_cancelada": "Ação do concierge cancelada",
+    "concierge_falhou": "Ação do concierge falhou",
 }
