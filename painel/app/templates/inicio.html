@@ -5,39 +5,6 @@
 <h1>Visão geral</h1>
 <p class="sub">De {{ inicio | data }} a {{ fim | data }}</p>
 
-<section class="painel concierge" {% if concierge.ativo %}data-concierge{% endif %}>
-  <h2>Concierge</h2>
-  {% if concierge.ativo %}
-  <script src="/static/concierge.js" defer></script>
-  <p class="dica">Peça em linguagem natural o que precisa no painel: consultar consumo, chaves, modelos e logs
-    {% if usuario.papel == 'admin' %}ou propor alterações (você confirma cada uma antes de ser executada){% endif %}.
-    As conversas não são guardadas pelo painel.</p>
-  <div class="concierge-historico" data-historico aria-live="polite">
-    <div class="chat-vazio" data-vazio>
-      <div class="chat-sugestoes">
-        <button type="button" class="secundario" data-sugestao="Como está o uso nos últimos 7 dias?">Como está o uso?</button>
-        <button type="button" class="secundario" data-sugestao="Quais chaves expiram nos próximos dias ou estão bloqueadas?">Chaves que pedem atenção</button>
-        <button type="button" class="secundario" data-sugestao="Quais modelos estão publicados e carregados?">Modelos</button>
-        {% if usuario.papel == 'admin' %}
-        <button type="button" class="secundario" data-sugestao="Quero criar uma chave nova. O que você precisa saber?">Criar uma chave</button>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-  <form class="concierge-form" data-form>
-    <input type="hidden" name="csrf" value="{{ usuario.csrf }}">
-    <textarea name="mensagem" rows="1" maxlength="4000" aria-label="Mensagem para o concierge"
-              placeholder="Ex.: crie uma chave para o time dados com o modelo llama3 por 30 dias (Enter envia)"></textarea>
-    <button type="submit" data-enviar>Enviar</button>
-    <button type="button" class="perigo" data-parar hidden>Parar</button>
-    <button type="button" class="secundario" data-limpar>Nova conversa</button>
-  </form>
-  {% else %}
-  <p class="dica">O concierge não está ativo.
-    {% if usuario.papel == 'admin' %}<a href="/concierge/configuracao">Escolher o modelo e ativar</a>.{% else %}Peça a um administrador para ativá-lo.{% endif %}</p>
-  {% endif %}
-</section>
-
 <div class="cartoes">
   <div class="cartao"><div class="rotulo">Requisições</div><div class="valor">{{ total.requisicoes | numero }}</div></div>
   <div class="cartao"><div class="rotulo">Tokens processados</div><div class="valor">{{ total.tok_total | numero }}</div></div>
@@ -101,4 +68,37 @@
     </tbody>
   </table></div>
 </div>
+
+<section class="painel concierge" {% if concierge.ativo %}data-concierge{% endif %}>
+  <h2>Concierge</h2>
+  {% if concierge.ativo %}
+  <script src="/static/concierge.js" defer></script>
+  <p class="dica">Peça em linguagem natural o que precisa no painel: consultar consumo, chaves, modelos e logs
+    {% if usuario.papel == 'admin' %}ou propor alterações (você confirma cada uma antes de ser executada){% endif %}.
+    As conversas não são guardadas pelo painel.</p>
+  <div class="concierge-historico" data-historico aria-live="polite">
+    <div class="chat-vazio" data-vazio>
+      <div class="chat-sugestoes">
+        <button type="button" class="secundario" data-sugestao="Como está o uso nos últimos 7 dias?">Como está o uso?</button>
+        <button type="button" class="secundario" data-sugestao="Quais chaves expiram nos próximos dias ou estão bloqueadas?">Chaves que pedem atenção</button>
+        <button type="button" class="secundario" data-sugestao="Quais modelos estão publicados e carregados?">Modelos</button>
+        {% if usuario.papel == 'admin' %}
+        <button type="button" class="secundario" data-sugestao="Quero criar uma chave nova. O que você precisa saber?">Criar uma chave</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <form class="concierge-form" data-form>
+    <input type="hidden" name="csrf" value="{{ usuario.csrf }}">
+    <textarea name="mensagem" rows="1" maxlength="4000" aria-label="Mensagem para o concierge"
+              placeholder="Ex.: crie uma chave para o time dados com o modelo llama3 por 30 dias (Enter envia)"></textarea>
+    <button type="submit" data-enviar>Enviar</button>
+    <button type="button" class="perigo" data-parar hidden>Parar</button>
+    <button type="button" class="secundario" data-limpar>Nova conversa</button>
+  </form>
+  {% else %}
+  <p class="dica">O concierge não está ativo.
+    {% if usuario.papel == 'admin' %}<a href="/concierge/configuracao">Escolher o modelo e ativar</a>.{% else %}Peça a um administrador para ativá-lo.{% endif %}</p>
+  {% endif %}
+</section>
 {% endblock %}
