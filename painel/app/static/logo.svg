@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="30 35 290 235" role="img" aria-label="WAP Forge">
+  <style>
+    .e { fill: #1d2330; }
+    @media (prefers-color-scheme: dark) { .e { fill: #f4f1ea; } }
+  </style>
+  <path fill="#ff6b2c" d="M160 39Q164 77 202 81Q164 85 160 123Q156 85 118 81Q156 77 160 39Z"/>
+  <path class="e" d="M40 147H260C285 147 300 135 310 122C308 160 280 190 240 190H210V232H244V261H88V232H123V190H110C70 190 45 170 40 147Z"/>
+</svg>

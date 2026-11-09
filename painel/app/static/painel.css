@@ -55,7 +55,10 @@ code, .mono { font-family: var(--mono); font-size: 0.9em; }
   padding: 10px 16px; background: var(--superficie); border-bottom: 1px solid var(--borda);
 }
 .marca { font-weight: 600; text-decoration: none; color: var(--texto); }
-.marca span { color: var(--suave); font-weight: 400; }
+.marca { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -0.01em; }
+.marca img { display: block; }
+.logo-login { display: block; margin: 0 auto 12px; }
+.login h1, .login .sub { text-align: center; }
 .topo nav { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
 .topo nav a { padding: 6px 10px; border-radius: var(--raio); text-decoration: none; color: var(--suave); }
 .topo nav a:hover { background: var(--neutro-fundo); color: var(--texto); }

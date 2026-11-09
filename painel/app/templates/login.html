@@ -2,8 +2,9 @@
 {% block titulo %}Entrar{% endblock %}
 {% block conteudo %}
 <div class="login">
-  <h1>apim-ollama</h1>
-  <p class="sub">Painel de governança de chaves e logs</p>
+  <img class="logo-login" src="/static/logo.svg" alt="" width="96" height="78">
+  <h1>WAP Forge</h1>
+  <p class="sub">Forjamos a IA. Entregamos o futuro.</p>
   {% if erro %}<p class="aviso erro" role="alert">{{ erro }}</p>{% endif %}
   <form class="painel" method="post" action="/login">
     <input type="hidden" name="csrf" value="{{ csrf_pre }}">

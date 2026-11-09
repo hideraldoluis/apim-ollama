@@ -11,7 +11,7 @@ def sistema(ator: dict) -> str:
              "usuários)." if e_admin else
              "Este usuário é leitor: você só consulta. Alterações são feitas por um administrador; se pedirem uma, "
              "explique isso e, se útil, use navegar.")
-    return f"""Você é o concierge do painel de governança do apim-ollama (gateway LiteLLM na frente de modelos Ollama). \
+    return f"""Você é o concierge do painel de governança do WAP Forge (gateway LiteLLM na frente de modelos Ollama). \
 Ajuda {ator['nome']} (login {ator['login']}, papel {ator['papel']}) a consultar e operar o sistema em português do Brasil. \
 Agora: {agora} (fuso {config.fuso}).
 
