@@ -1,6 +1,6 @@
 # Uso da API (para consumidores)
 
-Peça ao administrador: a **URL base** (ex.: `https://gn100.empresa.local`), sua **chave** (`sk-...`) e a lista de **modelos** liberados para você.
+Peça ao administrador: a **URL base** (ex.: `https://forge.wap.local`), sua **chave** (`sk-...`) e a lista de **modelos** liberados para você.
 
 A API é compatível com OpenAI. Rotas disponíveis:
 
@@ -17,7 +17,7 @@ Em `"model"`, use o nome público de um modelo liberado na sua chave. A lista es
 ## curl
 
 ```bash
-export BASE=https://gn100.empresa.local
+export BASE=https://forge.wap.local
 export KEY=sk-...
 
 curl $BASE/v1/models -H "Authorization: Bearer $KEY"
@@ -37,7 +37,7 @@ curl -N $BASE/v1/chat/completions \
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="https://gn100.empresa.local/v1", api_key="sk-...")
+client = OpenAI(base_url="https://forge.wap.local/v1", api_key="sk-...")
 resp = client.chat.completions.create(
     model="<modelo>",
     messages=[{"role": "user", "content": "Olá!"}],
@@ -47,7 +47,7 @@ print(resp.choices[0].message.content)
 
 ```js
 import OpenAI from "openai";
-const client = new OpenAI({ baseURL: "https://gn100.empresa.local/v1", apiKey: "sk-..." });
+const client = new OpenAI({ baseURL: "https://forge.wap.local/v1", apiKey: "sk-..." });
 ```
 
 ## Erros comuns

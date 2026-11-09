@@ -32,11 +32,11 @@ docker compose up -d --build
 docker compose run --rm painel python -m app.cli criar-admin <login> "<Nome>"   # primeiro admin do painel
 ```
 
-A instalação começa **sem nenhum modelo**: a API não atende nada até um admin, no painel (`https://localhost:8443`, tela **Modelos**), baixar um modelo e publicá-lo no gateway. Depois:
+A instalação começa **sem nenhum modelo**: a API não atende nada até um admin, no painel (`https://forge.wap.local:8443`, tela **Modelos**), baixar um modelo e publicá-lo no gateway. Depois:
 
 ```bash
 scripts/create-key.sh time-teste <modelo>   # imprime a chave sk-... (modelo = nome público publicado)
-INSECURE=1 scripts/smoke-test.sh https://localhost <chave-sk> <modelo>
+INSECURE=1 scripts/smoke-test.sh https://forge.wap.local <chave-sk> <modelo>
 ```
 
 `INSECURE=1` só é necessário enquanto a CA interna do Caddy não estiver instalada nos clientes (veja [docs/rede-e-tls.md](docs/rede-e-tls.md)).

@@ -2,7 +2,7 @@
 """Envia uma mensagem para a API e imprime a resposta da IA (só biblioteca padrão).
 
 Uso:
-  python scripts/chat.py --base https://localhost --key sk-... "Olá!"
+  python scripts/chat.py --base https://forge.wap.local --key sk-... "Olá!"
   python scripts/chat.py "Olá!"                  # usa BASE, KEY e MODEL do ambiente
   python scripts/chat.py --stream "Conte até 5"  # resposta em streaming (SSE)
   python scripts/chat.py                         # modo interativo (mantém o histórico)
@@ -79,7 +79,7 @@ def ask(args, messages):
 def main():
     p = argparse.ArgumentParser(description="Testa a API enviando uma mensagem para a IA.")
     p.add_argument("message", nargs="?", help="mensagem; se omitida, abre o modo interativo")
-    p.add_argument("--base", default=os.environ.get("BASE", "https://localhost"), help="URL base (env BASE)")
+    p.add_argument("--base", default=os.environ.get("BASE", "https://forge.wap.local"), help="URL base (env BASE)")
     p.add_argument("--key", default=os.environ.get("KEY"), help="chave sk-... (env KEY)")
     p.add_argument("--model", default=os.environ.get("MODEL"), help="nome público do modelo (env MODEL)")
     p.add_argument("--system", help="prompt de sistema opcional")

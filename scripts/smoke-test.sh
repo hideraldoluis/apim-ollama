@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Teste de aceitação da borda. Uso: scripts/smoke-test.sh <base_url> <api_key> <modelo>
-#   ex.: scripts/smoke-test.sh https://localhost sk-abc qwen2.5:7b
+#   ex.: scripts/smoke-test.sh https://forge.wap.local sk-abc qwen2.5:7b
 #   <modelo> é o nome público de um modelo publicado no gateway e liberado na chave.
 # Usa -k (ignora validação do certificado) apenas se INSECURE=1 (CA interna ainda não instalada).
 set -uo pipefail
