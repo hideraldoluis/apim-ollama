@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>WAP Forge - Tutorial da API</title>
+<style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+:root { --ink:#1d2330; --accent:#ff6b2c; --soft:#f4f1ea; --line:#d9d4c8; }
+* { box-sizing: border-box; }
+body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; margin: 0; }
+@page capa { size: A4; margin: 0; }
+.capa { page: capa; width:210mm; height:297mm; background:#1d2330; color:#f4f1ea; position:relative; overflow:hidden; page-break-after: always; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+.capa::before { content:""; position:absolute; width:190mm; height:190mm; border-radius:50%; top:38mm; left:10mm; background: radial-gradient(circle, rgba(255,107,44,.38) 0%, rgba(255,107,44,.12) 45%, rgba(255,107,44,0) 70%); }
+.capa::after { content:""; position:absolute; left:0; right:0; bottom:0; height:6mm; background: var(--accent); }
+.capa > * { position:relative; }
+.capa svg { width:120mm; height:auto; }
+.capa .e { fill:#f4f1ea; }
+.capa .marca { font-size: 58pt; font-weight:800; letter-spacing: 3pt; margin: 8mm 0 0; line-height:1; }
+.capa .marca b { color: var(--accent); font-weight:800; }
+.capa .linha { width: 28mm; height: 1.2mm; background: var(--accent); margin: 9mm auto 8mm; }
+.capa h1 { font-size: 22pt; font-weight:600; margin: 0 0 3mm; }
+.capa p { font-size: 12pt; color:#c9c4b8; margin:0; max-width:130mm; }
+.capa .meta { position:absolute; bottom:18mm; left:0; right:0; font-size: 9.5pt; color:#9a968b; letter-spacing:.5pt; }
+h2 { font-size: 16pt; border-bottom: 2px solid var(--accent); padding-bottom: 2mm; margin: 9mm 0 4mm; page-break-after: avoid; }
+h3 { font-size: 12pt; margin: 6mm 0 2mm; page-break-after: avoid; }
+p, li { orphans:3; widows:3; }
+pre { background:#1d2330; color:#f4f1ea; padding: 3.5mm 4mm; border-radius: 3px; font: 8.8pt/1.45 Consolas, "Courier New", monospace; white-space: pre-wrap; word-break: break-word; page-break-inside: avoid; }
+code { font-family: Consolas, "Courier New", monospace; background: var(--soft); padding: 0 1.5mm; border-radius: 2px; font-size: 9.5pt; }
+pre code { background:none; padding:0; font-size: inherit; }
+table { border-collapse: collapse; width:100%; margin: 3mm 0; page-break-inside: avoid; font-size: 10pt; }
+th, td { border:1px solid var(--line); padding: 2mm 3mm; text-align:left; vertical-align: top; }
+th { background: var(--soft); }
+.aviso { border-left: 4px solid var(--accent); background: #fff4ed; padding: 3mm 4mm; margin: 4mm 0; page-break-inside: avoid; }
+.dica { border-left: 4px solid #3b7ddd; background: #eef4fd; padding: 3mm 4mm; margin: 4mm 0; page-break-inside: avoid; }
+.fluxo { display:flex; align-items:center; justify-content:center; gap:3mm; margin:5mm 0; page-break-inside: avoid; }
+.fluxo div { border:2px solid var(--ink); border-radius:4px; padding:3mm 4mm; text-align:center; font-size:9.5pt; min-width: 32mm; }
+.fluxo .gw { background: var(--accent); border-color: var(--accent); color:#fff; font-weight:600; }
+.fluxo span { font-size: 16pt; color:#777; }
+.saida { color:#555; font-size:9.5pt; }
+ol.passos { padding-left: 6mm; } ol.passos li { margin-bottom: 1.5mm; }
+</style></head><body>
+
+<section class="capa">
+  __LOGO__
+  <div class="marca">WAP <b>FORGE</b></div>
+  <div class="linha"></div>
+  <h1>Tutorial da API</h1>
+  <p>Como usar os modelos de IA nas suas rotinas e scripts</p>
+  <div class="meta">GUIA PARA AS ÁREAS DE NEGÓCIO &nbsp;&middot;&nbsp; VERSÃO 1.0 &nbsp;&middot;&nbsp; forge.wap.local</div>
+</section>
+
+<h2>1. O que é e para que serve</h2>
+<p>O WAP Forge disponibiliza modelos de inteligência artificial hospedados dentro da empresa. Seus dados ficam na rede interna e não são enviados a serviços externos. Você usa esses modelos pelo seu próprio código (por exemplo, um script Python que resume textos, classifica comentários ou extrai informações de documentos) por meio de uma <strong>API</strong>, que é uma forma de um programa conversar com outro.</p>
+<div class="fluxo"><div>Seu script<br>(Python)</div><span>&rarr;</span><div class="gw">WAP Forge<br>valida sua chave</div><span>&rarr;</span><div>Modelo de IA<br>faster / thinker / coder</div></div>
+<p>A API segue o mesmo padrão da OpenAI. Por isso, a biblioteca oficial <code>openai</code> para Python funciona sem alterações, bastando apontar para o endereço da empresa.</p>
+
+<h2>2. O que você recebe da TI</h2>
+<p>Antes de começar, a TI entrega estes itens. Anote-os aqui:</p>
+<table>
+<tr><td style="width:45mm"><strong>URL base</strong></td><td>https://forge.wap.local</td></tr>
+<tr><td><strong>Sua chave (token)</strong></td><td>sk-................................</td></tr>
+<tr><td><strong>Modelos liberados</strong></td><td>faster, thinker, coder (confirme os da sua chave)</td></tr>
+<tr><td><strong>Validade da chave</strong></td><td>90 dias a partir da criação (padrão)</td></tr>
+<tr><td><strong>Limite por minuto</strong></td><td>30 requisições por minuto (padrão)</td></tr>
+<tr><td><strong>Requisições simultâneas</strong></td><td>2 ao mesmo tempo (padrão)</td></tr>
+</table>
+<p class="saida">Esses valores são os <strong>padrões</strong> aplicados às chaves novas. A TI pode ter definido valores diferentes para a sua chave; confirme com ela se precisar de mais.</p>
+<div class="aviso"><strong>Trate a chave como uma senha.</strong> Ela identifica você e sua área. Não a envie por e-mail ou chat, não a grave dentro de código que será compartilhado e não a publique em repositórios. Se ela vazar, avise a TI para revogá-la e emitir outra.</div>
+
+<h2>3. Antes de começar</h2>
+<ol class="passos">
+<li><strong>Rede:</strong> o acesso funciona apenas na rede interna da empresa ou com a <strong>VPN ligada</strong>. Fora dela, o endereço <code>forge.wap.local</code> não é encontrado (erro "Could not resolve host" ou "getaddrinfo failed").</li>
+<li><strong>Python 3.9 ou superior:</strong> confira com <code>python --version</code>.</li>
+<li><strong>Biblioteca:</strong> instale com <code>pip install openai</code>.</li>
+</ol>
+<div class="dica">Guarde a chave numa variável de ambiente em vez de escrevê-la no código. No Windows (PowerShell): <code>$env:FORGE_KEY = "sk-..."</code>. No Linux/macOS: <code>export FORGE_KEY=sk-...</code>.</div>
+
+<h2>4. Sua primeira chamada</h2>
+<h3>4.1 Listar os modelos que sua chave pode usar</h3>
+<pre><code>import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://forge.wap.local/v1",
+    api_key=os.environ["FORGE_KEY"],
+)
+
+for m in client.models.list():
+    print(m.id)</code></pre>
+<p class="saida">Saída esperada: <code>faster</code>, <code>thinker</code> e <code>coder</code> (um por linha).</p>
+
+<h3>4.2 Fazer uma pergunta</h3>
+<pre><code>resposta = client.chat.completions.create(
+    model="faster",
+    messages=[{"role": "user", "content": "Explique em uma frase o que é uma API."}],
+)
+print(resposta.choices[0].message.content)</code></pre>
+<p>O campo <code>messages</code> é a conversa. Cada item tem um <code>role</code>: <code>user</code> (o que você pergunta), <code>system</code> (instruções gerais de comportamento) e <code>assistant</code> (respostas anteriores do modelo, quando você quer manter o contexto).</p>
+<div class="dica"><strong>A primeira chamada pode demorar.</strong> Se o modelo estava sem uso, ele precisa ser carregado na memória, o que pode levar dezenas de segundos. As chamadas seguintes são rápidas. Configure um tempo limite generoso: <code>OpenAI(..., timeout=180)</code>.</div>
+
+<h2>5. Escolhendo o modelo</h2>
+<table>
+<tr><th style="width:24mm">Modelo</th><th>O que é</th><th>Use quando</th></tr>
+<tr><td><code>faster</code></td><td>Modelo menor, com resposta rápida.</td><td>Tarefas simples e em volume: resumir, classificar, extrair dados, reescrever textos curtos.</td></tr>
+<tr><td><code>thinker</code></td><td>Modelo pesado, com raciocínio (<em>thinking</em>) e suporte a ferramentas (<em>tools</em>).</td><td>Problemas que exigem análise: cálculos, comparações, decisões em várias etapas, tarefas em que o modelo precisa acionar funções suas. É mais lento.</td></tr>
+<tr><td><code>coder</code></td><td>Modelo especializado em código.</td><td>Gerar, explicar, revisar e converter código (Python, SQL, scripts).</td></tr>
+</table>
+<p>Na dúvida, comece pelo <code>faster</code>. Se a qualidade não bastar, tente o <code>thinker</code>.</p>
+<h3>Sobre o thinker</h3>
+<p>O <code>thinker</code> raciocina antes de responder. Esse raciocínio consome parte do limite de tokens, então use um valor de <code>max_tokens</code> alto (a partir de 4000). Com um valor baixo, a resposta pode vir vazia ou cortada. O raciocínio aparece no campo <code>reasoning_content</code> da resposta, separado do texto final em <code>content</code>.</p>
+
+<h2>6. Ajustando a resposta</h2>
+<table>
+<tr><th style="width:32mm">Parâmetro</th><th>O que faz</th><th>Dica</th></tr>
+<tr><td><code>max_tokens</code></td><td>Tamanho máximo da resposta. Um token equivale a cerca de 3/4 de uma palavra.</td><td>Sem ele, vale o padrão do modelo. No <code>thinker</code>, use 4000 ou mais.</td></tr>
+<tr><td><code>temperature</code></td><td>Variação da resposta, de 0 a 2.</td><td>Use 0 para tarefas que exigem consistência (classificar, extrair). Valores maiores deixam o texto mais criativo.</td></tr>
+<tr><td><code>stream</code></td><td>Recebe a resposta aos poucos, em vez de esperar o texto inteiro.</td><td>Melhor para textos longos e para telas de chat.</td></tr>
+</table>
+<pre><code>resposta = client.chat.completions.create(
+    model="thinker",
+    messages=[{"role": "user", "content": "Uma loja vende 3 camisetas por R$ 90. "
+                                          "Quanto custam 7 camisetas? Explique em uma linha."}],
+    max_tokens=4000,
+    temperature=0,
+)
+print(resposta.choices[0].message.content)</code></pre>
+<p class="saida">Resultado obtido no teste: "Cada camiseta custa R$ 90 / 3 = R$ 30, logo 7 camisetas custam 7 x R$ 30 = <strong>R$ 210</strong>."</p>
+<h3>Resposta em tempo real (streaming)</h3>
+<pre><code>fluxo = client.chat.completions.create(
+    model="faster",
+    messages=[{"role": "user", "content": "Conte de 1 a 5, separado por vírgulas."}],
+    stream=True,
+)
+for pedaco in fluxo:
+    if pedaco.choices and pedaco.choices[0].delta.content:
+        print(pedaco.choices[0].delta.content, end="", flush=True)</code></pre>
+
+<h2>7. Exemplos para o dia a dia</h2>
+<p>Em todos os exemplos abaixo, <code>client</code> é o objeto criado na seção 4.1 e <code>texto</code> é a mensagem de um cliente:</p>
+<pre><code>texto = ("O pedido 4521 foi entregue com cinco dias de atraso e a embalagem estava "
+         "danificada. Já é a segunda vez que isso acontece e estou considerando "
+         "cancelar o contrato.")
+
+def perguntar(modelo, instrucao, **extra):
+    r = client.chat.completions.create(
+        model=modelo,
+        messages=[{"role": "user", "content": instrucao + "\n\n" + texto}],
+        **extra,
+    )
+    return r.choices[0].message.content</code></pre>
+<h3>7.1 Resumir</h3>
+<pre><code>print(perguntar("faster", "Resuma em uma frase:", max_tokens=200))</code></pre>
+<p class="saida">Resposta: "O pedido 4521 foi entregue com atraso e com embalagem danificada, o que já aconteceu duas vezes, levando a considerar cancelar o contrato."</p>
+<h3>7.2 Classificar</h3>
+<pre><code>print(perguntar("faster",
+    "Classifique o sentimento do texto como POSITIVO, NEUTRO ou NEGATIVO. "
+    "Responda só com a palavra.", max_tokens=20, temperature=0))</code></pre>
+<p class="saida">Resposta: <code>NEGATIVO</code></p>
+<h3>7.3 Extrair dados estruturados</h3>
+<pre><code>print(perguntar("faster",
+    "Extraia do texto, em JSON, com as chaves pedido, problemas (lista) e "
+    "risco_cancelamento (true/false). Responda só com o JSON.",
+    max_tokens=300, temperature=0))</code></pre>
+<p class="saida">Resposta:</p>
+<pre><code>{
+  "pedido": "4521",
+  "problemas": ["entregue com cinco dias de atraso", "embalagem danificada"],
+  "risco_cancelamento": true
+}</code></pre>
+<h3>7.4 Gerar código</h3>
+<pre><code>r = client.chat.completions.create(
+    model="coder",
+    messages=[{"role": "user", "content": "Escreva em Python uma função que recebe uma lista "
+                                          "de valores e retorna a média ignorando valores None. Só o código."}],
+    max_tokens=500, temperature=0,
+)
+print(r.choices[0].message.content)</code></pre>
+<div class="aviso"><strong>Confira sempre o resultado.</strong> Os modelos podem errar ou inventar informações, principalmente em números, datas e código. Revise antes de usar em decisões ou em produção e valide o código gerado com testes.</div>
+<h3>Dicas para escrever bons pedidos (prompts)</h3>
+<ul>
+<li>Seja específico sobre o formato: "responda só com a palavra", "em JSON", "em até 3 tópicos".</li>
+<li>Dê o contexto: quem é o leitor, qual o objetivo e o que deve ser evitado.</li>
+<li>Para tarefas repetitivas, mostre um ou dois exemplos do resultado esperado.</li>
+<li>Em lotes grandes, envie uma requisição por item e respeite o limite por minuto (seção 8).</li>
+</ul>
+
+<h2>8. Quando algo dá errado</h2>
+<table>
+<tr><th style="width:36mm">O que você viu</th><th>Causa provável</th><th>O que fazer</th></tr>
+<tr><td>"Could not resolve host" / "getaddrinfo failed"</td><td>Fora da rede interna.</td><td>Ligue a VPN e tente de novo.</td></tr>
+<tr><td>401</td><td>Chave ausente, errada ou vencida.</td><td>Confira a variável <code>FORGE_KEY</code>. Se venceu, peça renovação à TI.</td></tr>
+<tr><td>403</td><td>Sua chave não tem acesso ao modelo pedido.</td><td>Liste os modelos (seção 4.1) e use um da lista, ou peça a liberação.</td></tr>
+<tr><td>429</td><td>Limite de requisições por minuto (padrão: 30) ou de simultâneas (padrão: 2) atingido.</td><td>Aguarde alguns segundos e tente de novo, esperando um pouco mais a cada nova tentativa.</td></tr>
+<tr><td>413</td><td>Texto grande demais (acima de 5 MB).</td><td>Divida o conteúdo em partes menores.</td></tr>
+<tr><td>Timeout ou erro 5xx</td><td>Modelo carregando ou servidor ocupado.</td><td>Aumente o timeout (180 s) e tente de novo.</td></tr>
+<tr><td>Resposta vazia ou cortada no <code>thinker</code></td><td><code>max_tokens</code> baixo.</td><td>Use 4000 ou mais.</td></tr>
+</table>
+<h3>Tentar de novo automaticamente</h3>
+<pre><code>client = OpenAI(
+    base_url="https://forge.wap.local/v1",
+    api_key=os.environ["FORGE_KEY"],
+    timeout=180,
+    max_retries=4,   # a biblioteca espera e repete em caso de 429 e erros temporários
+)</code></pre>
+
+<h2>9. Privacidade e boas práticas</h2>
+<div class="aviso"><strong>Tudo é registrado.</strong> Cada chamada grava o texto enviado, a resposta, o nome dado à sua chave (usuário, time ou grupo), o modelo usado, o consumo e o endereço de origem. Os administradores da plataforma podem consultar esses registros.</div>
+<ul>
+<li>Não envie senhas, chaves, tokens nem dados que os administradores não possam ver.</li>
+<li>Os dados permanecem na rede interna, mas isso não substitui as regras da empresa para dados pessoais e sigilosos. Em caso de dúvida, consulte a TI.</li>
+<li>Não compartilhe sua chave. Cada área deve ter a sua, para que o consumo e os limites sejam separados.</li>
+<li>Por padrão, a chave vale 90 dias e permite 30 requisições por minuto, no máximo 2 ao mesmo tempo. Peça renovação antes do vencimento e ajuste dos limites à TI se precisar de mais.</li>
+<li>Use <code>faster</code> sempre que ele bastar: é mais rápido e deixa os modelos pesados livres para quem precisa deles.</li>
+</ul>
+
+<h2>10. Suporte</h2>
+<p>Todo o suporte do WAP Forge é feito por um único contato:</p>
+<table>
+<tr><td style="width:30mm"><strong>Contato</strong></td><td>Jefferson Jenzura Kopp</td></tr>
+<tr><td><strong>E-mail</strong></td><td>jefferson.kopp@wap.ind.br</td></tr>
+</table>
+<p>Fale com ele para:</p>
+<ul>
+<li>pedir uma chave, renovação ou revogação (por exemplo, se a chave vazar);</li>
+<li>aumentar limites ou liberar outro modelo;</li>
+<li>relatar problemas de acesso ou instabilidade.</li>
+</ul>
+<p>Ao pedir ajuda, informe o nome da sua chave (não a chave em si), o modelo usado, o horário da chamada e a mensagem de erro recebida.</p>
+<p style="color:#777;font-size:9pt;margin-top:8mm">Referência rápida: URL base <code>https://forge.wap.local/v1</code> &middot; Rotas: <code>GET /v1/models</code>, <code>POST /v1/chat/completions</code> &middot; Cabeçalho: <code>Authorization: Bearer &lt;sua chave&gt;</code></p>
+</body></html>
